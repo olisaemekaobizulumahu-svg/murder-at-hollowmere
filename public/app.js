@@ -1,5 +1,5 @@
 "use strict";
-const BUILD_VERSION='1.5.1';
+const BUILD_VERSION='1.6.0';
 /* Murder at Hollowmere: the page.
    The server deals the cards, keeps the envelope and every hand, and runs the computer
    detectives. This page shows what your own seats may see and sends your moves. */
@@ -953,24 +953,24 @@ function settingsHTML(){
   </div>`;
 }
 
-/* ---------- the 3D manor board ----------
-   Six rooms in a ring around the hall, where the sealed envelope lies on a table.
-   Each question moves the named relative and method into the named room, the way
-   the pieces travel on a mystery board. Purely visual: the game runs without it. */
+/* ---------- the cinematic, interactive 3D manor ----------
+   A real WebGL board with procedurally aged stone/wood, cinematic lighting,
+   furnishings, animated miniature characters, and accessible camera controls.
+   The server remains authoritative; rendering never changes the mystery. */
 const Stage=(()=>{
   const THREE_URL="three.min.js";
   const st={ok:false,dead:false,loading:false,host:null,g:null,code:null,key:null,tableKey:null,hadGame:false,
     pickMode:false,picks:{},know:null,focus:{mode:"overview"},t:0,lastDrag:-1e9,tip:"",tipUntil:0,visible:true,
     hover:null,revealKey:null,reveal:null,capHTML:null,tanH:.5,tanV:.32,
     seats:[],lastN:0,turnKey:null,qKey:null,qFly:null,boltAt:-99,nextBolt:4,flash:null,me:null,dec:{},
-    follow:true,saver:false,seatHex:null,acc:0,idle:false,poke:0,lastTap:null};
+    follow:true,saver:false,seatHex:null,acc:0,idle:false,poke:0,lastTap:null,zoom:1,topView:false,filmOrbit:false,quality:"cinematic"};
   const poke=()=>{st.poke=performance.now();st.idle=false;};
   const AMB=()=>!REDUCED&&!st.saver;
   const api={onPick:null};
   let T,R,scene,camera,clock,ray,ndc,capEl,ro,io,camT,wantT,tmpA,tmpB,tmpC,right,GREY;
   const pieces={},rooms=[],pickables=[],redraws=[],faces={},labels=[];
-  let envGroup,envMat,flapMat,flap,lamp,focusLight,dust,dustPos,waterMat,boat,revealCards=[];
-  let hemi,moonL,conf,rain,rainPos;const figs=[],qCards=[],flyers=[],marks=[];
+  let envGroup,envMat,flapMat,flap,lamp,focusLight,dust,dustPos,waterMat,boat,revealCards=[],chandelier;
+  let hemi,moonL,conf,rain,rainPos;const figs=[],qCards=[],flyers=[],marks=[],warmLights=[],flames=[];
   const cam={az:.95,el:.9,dist:15},want={az:.95,el:.9,dist:15};
   const RIN=2.45,ROUT=6.25,FLOOR=.14,TAU=Math.PI*2,SEAT_R=7.25,TER_Y=-.3;
   const SEAT_HEX=[0xc0424f,0x2f86b3,0xc9971f,0x7a5bb5,0x3a9a68,0xc25a9f,0x4c78a8,0xd97736];
@@ -981,8 +981,8 @@ const Stage=(()=>{
   const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
   const SUS_COL={philippa:0x8d4b98,rupert:0x3a4058,beatrice:0xd67fa0,desmond:0xd08f2c,imogen:0x2f938b,hollis:0xe9dfc8};
   const LOOK={greenhouse:[0x47684a,"tiles"],cellar:[0x52423e,"flags"],attic:[0x7d5939,"planks"],boathouse:[0x6e533a,"planks"],music:[0x6e2a3b,"carpet"],gallery:[0x4f3f5c,"parquet"]};
-  const FELL='"IM Fell English SC","IM Fell English",Georgia,serif',SERIF='"IM Fell English",Georgia,serif',
-        SANS='"Alegreya Sans","Gill Sans","Segoe UI",system-ui,sans-serif',EMOJI='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  const FELL='"Cinzel","Cormorant Garamond",Georgia,serif',SERIF='"Cormorant Garamond",Georgia,serif',
+        SANS='"Source Sans 3","Segoe UI",system-ui,sans-serif',EMOJI='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
   function fail(){st.dead=true;st.ok=false;document.body.classList.add("no3d");}
   function load(){
@@ -999,27 +999,73 @@ const Stage=(()=>{
     const c=document.createElement("canvas");c.width=w;c.height=h;
     const tex=new T.CanvasTexture(c);
     if(repeat){tex.wrapS=tex.wrapT=T.RepeatWrapping;}
-    tex.anisotropy=4;
+    tex.anisotropy=8;tex.encoding=T.sRGBEncoding;
     const run=()=>{const x=c.getContext("2d");x.clearRect(0,0,w,h);draw(x,w,h);tex.needsUpdate=true;};
     run();redraws.push(run);tex.__redraw=run;return tex;
   }
+  /* Each tile is a small original procedural material, not a flat colour.  One
+     deterministic canvas per room avoids external downloads or huge PBR sets. */
   function pattern(kind,base){
-    return canvasTex(128,128,(x,w,h)=>{
+    return canvasTex(384,384,(x,w,h)=>{
       const c=new T.Color(base),hx=k=>"#"+c.clone().offsetHSL(0,0,k).getHexString();
-      x.fillStyle=hx(0);x.fillRect(0,0,w,h);
-      if(kind==="tiles"||kind==="parquet"||kind==="checker"){
-        const n=4,s=w/n;
-        for(let i=0;i<n;i++)for(let j=0;j<n;j++)if((i+j)%2){x.fillStyle=kind==="checker"?"#cdbfa8":hx(kind==="parquet"?.05:-.05);x.fillRect(i*s,j*s,s,s);}
-        x.strokeStyle=hx(-.09);x.lineWidth=2;
-        for(let i=0;i<=n;i++){x.beginPath();x.moveTo(i*s,0);x.lineTo(i*s,h);x.stroke();x.beginPath();x.moveTo(0,i*s);x.lineTo(w,i*s);x.stroke();}
+      const rnd=i=>{const v=Math.sin(i*47.619+11.93)*43758.5453;return v-Math.floor(v);};
+      x.fillStyle=hx(-.025);x.fillRect(0,0,w,h);
+      if(kind==="checker"||kind==="tiles"||kind==="parquet"||kind==="flags"){
+        const n=kind==="checker"?6:kind==="flags"?4:8,z=w/n;
+        for(let row=0;row<n;row++)for(let col=0;col<n;col++){
+          const parity=(col+row)%2,xx=col*z+1,yy=row*z+1;
+          let shade=parity?-.08:.06;
+          if(kind==="checker"){
+            shade=0;x.fillStyle=parity?"#2f2534":"#eee2cb";
+          }else x.fillStyle=hx(shade+(rnd(row*31+col*7)-.5)*.045);
+          x.fillRect(xx,yy,z-2,z-2);
+          const g=x.createLinearGradient(xx,yy,xx+z,yy+z);
+          g.addColorStop(0,"rgba(255,255,255,.16)");g.addColorStop(.5,"rgba(255,255,255,0)");g.addColorStop(1,"rgba(0,0,0,.13)");
+          x.fillStyle=g;x.fillRect(xx,yy,z-2,z-2);
+          x.strokeStyle=kind==="checker"?"rgba(178,145,105,.28)":"rgba(12,9,12,.2)";x.lineWidth=1.5;x.strokeRect(xx+.5,yy+.5,z-3,z-3);
+          if(kind==="checker"||kind==="tiles"||kind==="flags"){
+            for(let v=0;v<4;v++){
+              const vx=xx+rnd(col*21+row*29+v*97)*z,vy=yy+rnd(col*55+row*13+v*101)*z;
+              x.strokeStyle=parity?"rgba(229,216,189,.12)":"rgba(85,75,73,.14)";x.lineWidth=.6;
+              x.beginPath();x.moveTo(vx,vy);x.bezierCurveTo(vx+z*.11,vy-z*.1,vx+z*.22,vy+z*.12,vx+z*.38,vy+z*.2);x.stroke();
+            }
+          }
+        }
+        if(kind==="parquet"){
+          x.strokeStyle="rgba(234,181,105,.27)";x.lineWidth=1.1;
+          for(let k=0;k<15;k++){const v=k*26;x.beginPath();x.moveTo(v,0);x.lineTo(0,v);x.stroke();}
+        }
       }else if(kind==="planks"){
-        for(let i=0;i<8;i++){x.fillStyle=hx(((i*5)%3-1)*.03);x.fillRect(0,i*16,w,15);x.fillStyle=hx(-.12);x.fillRect(0,i*16+15,w,1);x.fillRect((i*41)%w,i*16,1.5,15);}
-      }else if(kind==="flags"){
-        x.fillStyle=hx(-.1);x.fillRect(0,0,w,h);
-        for(let i=0;i<4;i++)for(let j=0;j<4;j++){x.fillStyle=hx(((i*7+j*3)%5-2)*.025);x.fillRect(i*32+1.5,j*32+1.5,29,29);}
+        for(let row=0;row<12;row++){
+          const yy=row*32,off=(row%2)*w*.22;
+          x.fillStyle=hx(((row*5)%4-1.5)*.028);x.fillRect(0,yy,w,31);
+          x.strokeStyle="rgba(22,11,8,.38)";x.lineWidth=2;x.beginPath();x.moveTo(0,yy+31);x.lineTo(w,yy+31);x.stroke();
+          x.beginPath();x.moveTo(off,yy);x.lineTo(off,yy+32);x.stroke();
+          for(let j=0;j<18;j++){
+            const q=rnd(row*55+j*71),y=yy+3+j*1.4;
+            x.strokeStyle=`rgba(29,12,8,${.045+q*.16})`;x.lineWidth=.6+q*.8;
+            x.beginPath();x.moveTo(0,y);x.bezierCurveTo(w*.27,y+(q-.5)*5,w*.7,y+(q-.5)*3,w,y);x.stroke();
+          }
+          for(const cx of [8,w*.52]){
+            x.fillStyle="rgba(30,21,15,.34)";x.beginPath();x.arc(cx,yy+7,1.7,0,Math.PI*2);x.fill();
+          }
+        }
       }else if(kind==="carpet"){
-        x.strokeStyle=hx(.09);x.lineWidth=3;
-        for(let i=-4;i<8;i++){x.beginPath();x.moveTo(i*32,0);x.lineTo(i*32+h,h);x.stroke();x.beginPath();x.moveTo(i*32+h,0);x.lineTo(i*32,h);x.stroke();}
+        x.fillStyle=hx(-.07);x.fillRect(0,0,w,h);
+        x.strokeStyle="#b58b56";x.lineWidth=12;x.strokeRect(9,9,w-18,h-18);
+        x.strokeStyle="#b58b5680";x.lineWidth=5;x.strokeRect(28,28,w-56,h-56);
+        for(let row=0;row<7;row++)for(let col=0;col<7;col++){
+          let xx=col*54+27,yy=row*54+27;
+          x.strokeStyle="rgba(221,182,119,.28)";x.lineWidth=1.5;
+          x.beginPath();x.ellipse(xx,yy,13,25,Math.PI/4,0,Math.PI*2);x.stroke();
+          x.beginPath();x.ellipse(xx,yy,13,25,-Math.PI/4,0,Math.PI*2);x.stroke();
+        }
+        x.strokeStyle="#d4b080a0";x.lineWidth=3;x.beginPath();x.arc(w/2,h/2,115,0,Math.PI*2);x.stroke();
+      }
+      for(let i=0;i<1000;i++){
+        const xx=rnd(i*3+5)*w,yy=rnd(i*13+17)*h;
+        x.fillStyle=rnd(i*21)>.5?"rgba(255,241,213,.058)":"rgba(11,8,13,.07)";
+        x.fillRect(xx,yy,.7+rnd(i+9)*1.4,.7+rnd(i+13)*1.1);
       }
     },true);
   }
@@ -1152,39 +1198,143 @@ const Stage=(()=>{
     }
   }
 
+  /* Victorian embellishments: readable from above, but they exist as 3D objects
+     and cast shadows. They do not interfere with clickable game pieces. */
+  function candle(parent,pos,scale=1,lit=true){
+    const gold=Mat(0xaf8749,{m:.68,r:.3}),wax=Mat(0xf3e1b8,{r:.86}),fire=Mat(0xffb348,{r:.1});
+    const holder=add(new T.CylinderGeometry(.12*scale,.15*scale,.055*scale,12),gold,pos,null,parent);
+    holder.castShadow=false;
+    add(new T.CylinderGeometry(.046*scale,.05*scale,.22*scale,10),wax,pos.clone().add(V(0,.12*scale,0)),null,parent);
+    if(lit){const fg=new T.Group();fg.position.copy(pos.clone().add(V(0,.27*scale,0)));parent.add(fg);
+      const flame=add(new T.SphereGeometry(.05*scale,9,8),fire,V(0,0,0),null,fg,true);flame.scale.y=2.1;flames.push({g:fg,mesh:flame,offset:flames.length*1.4});}
+  }
+  function ornateRug(parent,point,radius,base){
+    const g=new T.Group();g.position.copy(point);parent.add(g);
+    const mat=Mat(base,{r:.9}),trim=Mat(0xc7a272,{m:.3,r:.65});
+    const rug=add(new T.CylinderGeometry(radius,radius,.014,48),mat,V(0,.004,0),null,g,true);
+    rug.receiveShadow=true;
+    for(const r of [radius*.92,radius*.69]){
+      const tor=add(new T.TorusGeometry(r,.017,5,56),trim,V(0,.021,0),[Math.PI/2,0,0],g,true);tor.receiveShadow=false;
+    }
+  }
+  function roomDecor(id,a,grp){
+    const P=(r,da,y)=>polar(r,a+da,y),wood=Mat(0x493025,{r:.58}),brass=Mat(0xc4a066,{m:.65,r:.35}),velvet=Mat(0x462633,{r:.98});
+    // Raised panelled wainscoting and a narrow brass cornice along the outer wall.
+    for(const da of [-.35,0,.35]){
+      const panel=new T.Group();panel.position.copy(P(ROUT-.09,da,.4));panel.rotation.y=-(a+da)+Math.PI/2;grp.add(panel);
+      add(new T.BoxGeometry(.55,.63,.045),wood,V(0,0,0),null,panel);
+      add(new T.BoxGeometry(.48,.49,.049),Mat(0x705144,{r:.82}),V(0,0,.008),null,panel,true);
+      for(const x of [-.24,.24])add(new T.BoxGeometry(.025,.53,.061),brass,V(x,0,.023),null,panel,true);
+    }
+    // Lamps are deliberately off the playing-token lanes.
+    const sconces=id==="boathouse"?[-.37,.37]:[-.31,.31];
+    for(const da of sconces){
+      const pos=P(5.9,da,FLOOR+.72);
+      add(new T.CylinderGeometry(.04,.06,.36,9),brass,pos,null,grp);
+      candle(grp,pos.clone().add(V(0,.19,0)),.68);
+    }
+    // Room-specific extra props, made from real geometry.
+    if(id==="music"){
+      ornateRug(grp,P(4.65,-.08,FLOOR+.013),.86,0x642b39);
+      const bench=new T.Group();bench.position.copy(P(4.35,.38,FLOOR));bench.rotation.y=-a;grp.add(bench);
+      add(new T.BoxGeometry(.65,.075,.28),velvet,V(0,.37,0),null,bench);
+      [-.22,.22].forEach(x=>add(new T.BoxGeometry(.055,.37,.055),wood,V(x,.19,0),null,bench));
+      candle(grp,P(5.5,.34,FLOOR+.45),.75);
+    }else if(id==="gallery"){
+      ornateRug(grp,P(4.1,0,FLOOR+.012),.72,0x4c3049);
+      const plinth=add(new T.CylinderGeometry(.24,.27,.44,16),Mat(0xbcb0a2,{r:.7}),P(4.8,0,FLOOR+.23),null,grp);
+      add(new T.SphereGeometry(.16,16,12),Mat(0xc9b6a3,{r:.85}),P(4.8,0,FLOOR+.6),null,grp);
+    }else if(id==="attic"){
+      const rug=Mat(0x625044,{r:1});
+      const chest=new T.Group();chest.position.copy(P(4.1,-.02,FLOOR));chest.rotation.y=-a;grp.add(chest);
+      add(new T.BoxGeometry(.6,.25,.4),wood,V(0,.13,0),null,chest);
+      add(new T.BoxGeometry(.6,.055,.45),rug,V(0,.31,0),[0,0,-.15],chest);
+      [-.26,.26].forEach(x=>add(new T.BoxGeometry(.026,.37,.46),brass,V(x,.18,0),null,chest));
+    }else if(id==="greenhouse"){
+      const leaf=Mat(0x315e3d,{r:.9}),leaf2=Mat(0x579266,{r:.9}),soil=Mat(0x533a2b,{r:1});
+      for(let k=0;k<6;k++){
+        const da=-.35+k*.14,r=k%2?5.1:4.75,base=P(r,da,FLOOR+.16);
+        add(new T.CylinderGeometry(.1,.14,.23,10),soil,base,null,grp);
+        for(let j=0;j<5;j++){
+          const theta=j*TAU/5+(k*.2),leafP=base.clone().add(V(Math.cos(theta)*.13,.18+Math.sin(theta*2)*.04,Math.sin(theta)*.13));
+          const l=add(new T.SphereGeometry(.085,9,7),j%2?leaf:leaf2,leafP,null,grp,true);l.scale.set(.52,.35,2.1);l.rotation.y=theta;
+        }
+      }
+      const frame=Mat(0x597b66,{m:.45,r:.45});
+      for(const da of [-.45,.45]){
+        const pos=P(5.95,da,FLOOR+.58);
+        add(new T.BoxGeometry(.06,1.14,.06),frame,pos,null,grp);
+      }
+    }else if(id==="cellar"){
+      const rack=new T.Group();rack.position.copy(P(5.95,0,FLOOR));rack.rotation.y=-a;grp.add(rack);
+      const glass=Mat(0x183e30,{r:.18,m:.18});
+      for(const z of [-.18,.18])for(const x of [-.32,-.11,.11,.32]){
+        add(new T.CylinderGeometry(.053,.057,.28,9),glass,V(x,.32,z),[Math.PI/2,0,0],rack);
+      }
+      for(const y of [.18,.52])add(new T.BoxGeometry(.88,.04,.42),wood,V(0,y,0),null,rack);
+    }else if(id==="boathouse"){
+      const rope=Mat(0xbba27a,{r:1}),post=Mat(0x4d3021,{r:.85});
+      for(const da of [-.35,.35]){
+        const pos=P(4.45,da,FLOOR+.28);add(new T.CylinderGeometry(.075,.085,.56,10),post,pos,null,grp);
+        const top=pos.clone().add(V(0,.28,0));add(new T.TorusGeometry(.12,.024,6,18),rope,top,[Math.PI/2,0,0],grp);
+      }
+    }
+  }
+  function buildChandelier(){
+    const gold=Mat(0xb9955b,{m:.75,r:.27}),ivory=Mat(0xf1dcc0,{r:.76});
+    const group=new T.Group();group.position.set(0,2.85,0);scene.add(group);
+    add(new T.CylinderGeometry(.027,.027,1.25,10),gold,V(0,.57,0),null,group,true);
+    add(new T.SphereGeometry(.12,12,10),gold,V(0,-.02,0),null,group);
+    const torus=add(new T.TorusGeometry(.66,.03,7,48),gold,V(0,-.14,0),[Math.PI/2,0,0],group,true);
+    for(let j=0;j<6;j++){
+      const a=j*TAU/6;const pos=V(.64*Math.cos(a),-.14,.64*Math.sin(a));
+      candle(group,pos,.88,true);
+      add(new T.CylinderGeometry(.013,.013,.19,6),gold,pos.clone().add(V(0,-.10,0)),null,group,true);
+    }
+    const gem=new T.Mesh(new T.OctahedronGeometry(.15),new T.MeshStandardMaterial({color:0xe1d6ca,roughness:.17,metalness:.34,transparent:true,opacity:.76}));gem.position.y=-.22;group.add(gem);
+    const chandelierLight=new T.PointLight(0xffc58d,1.05,8.5,1.3);chandelierLight.position.copy(group.position).add(V(0,-.32,0));scene.add(chandelierLight);warmLights.push({light:chandelierLight,base:1.05,phase:0});
+    return group;
+  }
   function build(){
     R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-    R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;R.setClearColor(0x000000,0);
-    scene=new T.Scene();scene.fog=new T.Fog(0x1a1120,20,38);
+    R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;
+    // Filmic colour management with real lighting, while preserving transparent board edges.
+    R.outputEncoding=T.sRGBEncoding;R.toneMapping=T.ACESFilmicToneMapping;R.toneMappingExposure=1.23;
+    R.setClearColor(0x000000,0);
+    scene=new T.Scene();scene.fog=new T.FogExp2(0x161828,.018);
     camera=new T.PerspectiveCamera(36,1.6,.1,90);
     clock=new T.Clock();ray=new T.Raycaster();ndc=new T.Vector2();
     camT=V(0,.3,0);wantT=V(0,.3,0);tmpA=V(0,0,0);tmpB=V(0,0,0);tmpC=V(0,0,0);right=V(1,0,0);GREY=new T.Color(0x6d6672);
 
-    hemi=new T.HemisphereLight(0xb3bcec,0x2b1a30,.66);scene.add(hemi);
-    const moon=moonL=new T.DirectionalLight(0xdfe3ff,.6);moon.position.set(-7,13,6);moon.castShadow=true;
-    moon.shadow.mapSize.set(1024,1024);Object.assign(moon.shadow.camera,{left:-9.5,right:9.5,top:9.5,bottom:-9.5,near:1,far:42});moon.shadow.bias=-.0015;
+    hemi=new T.HemisphereLight(0xb6c6e7,0x39251b,.7);scene.add(hemi);
+    const moon=moonL=new T.DirectionalLight(0xa6b9e6,.94);moon.position.set(-7,13,6);moon.castShadow=true;
+    moon.shadow.mapSize.set(2048,2048);Object.assign(moon.shadow.camera,{left:-10,right:10,top:10,bottom:-10,near:1,far:42});moon.shadow.bias=-.00035;moon.shadow.normalBias=.018;
     scene.add(moon);
-    lamp=new T.PointLight(0xffc27a,1.1,11,1.5);lamp.position.set(0,3.4,0);scene.add(lamp);
+    lamp=new T.PointLight(0xffb768,1.45,11,1.45);lamp.position.set(0,3.4,0);scene.add(lamp);
     focusLight=new T.PointLight(0xffd391,0,7.5,1.4);focusLight.position.set(0,2.6,0);scene.add(focusLight);
 
     // plinth and brass rim
     add(new T.CylinderGeometry(ROUT+.25,ROUT+.5,.55,80),Mat(0x2a1d30,{r:.6}),V(0,-.275,0),null,scene,true);
     add(new T.TorusGeometry(ROUT+.26,.05,8,96),Mat(0xb08a3a,{m:.6,r:.35}),V(0,0,0),[Math.PI/2,0,0],scene,true);
     // the terrace where the detectives stand
-    const terTex=pattern("planks",0x3b2b26);terTex.repeat.set(4,4);
-    const ter=new T.Mesh(new T.CylinderGeometry(8.15,8.4,.34,96),[Mat(0x22171d,{r:.7}),new T.MeshStandardMaterial({map:terTex,roughness:.85}),Mat(0x22171d)]);
+    const terTex=pattern("planks",0x4a3028);terTex.repeat.set(3.5,3.5);
+    const ter=new T.Mesh(new T.CylinderGeometry(8.15,8.4,.34,96),[Mat(0x22171d,{r:.7}),new T.MeshStandardMaterial({map:terTex,roughness:.49,metalness:.06,bumpMap:terTex,bumpScale:.009}),Mat(0x22171d)]);
     ter.position.y=TER_Y-.17;ter.receiveShadow=true;scene.add(ter);
     add(new T.TorusGeometry(8.16,.045,8,128),Mat(0xb08a3a,{m:.6,r:.35}),V(0,TER_Y,0),[Math.PI/2,0,0],scene,true);
 
     // the hall: checkered floor, table, envelope
     add(new T.CylinderGeometry(RIN-.02,RIN-.02,FLOOR,72),Mat(0x2c2230),V(0,FLOOR/2,0),null,scene,true);
-    const ht=pattern("checker",0x33263a);ht.repeat.set(3,3);
-    const hall=new T.Mesh(new T.CircleGeometry(RIN-.02,72),new T.MeshStandardMaterial({map:ht,roughness:.55}));
+    const ht=pattern("checker",0x33263a);ht.repeat.set(1.4,1.4);
+    const hall=new T.Mesh(new T.CircleGeometry(RIN-.02,72),new T.MeshStandardMaterial({map:ht,roughness:.27,metalness:.12,bumpMap:ht,bumpScale:.011}));
     hall.rotation.x=-Math.PI/2;hall.position.y=FLOOR+.002;hall.receiveShadow=true;
     hall.userData.info="<b>The hall</b>The sealed envelope on the table holds the answer: who, how and where.";
     scene.add(hall);pickables.push(hall);
-    const wood=Mat(0x4a2f22,{r:.55});
-    add(new T.CylinderGeometry(.95,.95,.07,48),wood,V(0,FLOOR+.62,0),null,scene);
+    const wood=Mat(0x512f21,{r:.35});
+    add(new T.CylinderGeometry(.98,.98,.095,48),wood,V(0,FLOOR+.62,0),null,scene);
+    add(new T.TorusGeometry(.96,.023,8,64),Mat(0xc2a065,{m:.7,r:.33}),V(0,FLOOR+.674,0),[Math.PI/2,0,0],scene,true);
+    const tableRug=Mat(0x613d38,{r:.95});
+    add(new T.CylinderGeometry(1.21,1.21,.013,56),tableRug,V(0,FLOOR+.012,0),null,scene,true);
+    add(new T.TorusGeometry(1.17,.022,8,64),Mat(0xb58f55,{m:.55,r:.38}),V(0,FLOOR+.029,0),[Math.PI/2,0,0],scene,true);
     add(new T.CylinderGeometry(.11,.3,.6,20),wood,V(0,FLOOR+.3,0),null,scene);
     envGroup=new T.Group();envGroup.position.y=FLOOR+.655;scene.add(envGroup);
     envMat=new T.MeshStandardMaterial({color:0xefe2c2,roughness:.75,emissive:0xffc766,emissiveIntensity:0});
@@ -1201,15 +1351,15 @@ const Stage=(()=>{
     const wallPaper=0x76607c,trim=Mat(0x3b2a2c,{r:.6});
     ROOMS.forEach((rm,i)=>{
       const a=ang(i),a0=a-Math.PI/6,a1=a+Math.PI/6,[col,pat]=LOOK[rm.id];
-      const tex=pattern(pat,col);tex.repeat.set(.45,.45);
-      const mat=new T.MeshStandardMaterial({map:tex,roughness:.88,emissive:0xffb347,emissiveIntensity:0});
+      const tex=pattern(pat,col);tex.repeat.set(pat==="planks"?1.65:pat==="carpet"?1.0:1.25,pat==="planks"?1.65:pat==="carpet"?1.0:1.25);
+      const mat=new T.MeshStandardMaterial({map:tex,roughness:pat==="carpet"?.92:pat==="planks"?.53:.43,metalness:pat==="carpet"?0:.09,bumpMap:tex,bumpScale:.014,emissive:0xffb347,emissiveIntensity:0});
       const floor=slab(RIN,rm.id==="boathouse"?4.35:ROUT,a0+.004,a1-.004,FLOOR,mat);
       floor.userData.pick={k:"r",id:rm.id};scene.add(floor);pickables.push(floor);
       if(rm.id==="boathouse"){
-        waterMat=new T.MeshStandardMaterial({color:0x2a5a7c,roughness:.2,metalness:.15,emissive:0x163a55,emissiveIntensity:.3,transparent:true,opacity:.92});
+        waterMat=new T.MeshStandardMaterial({color:0x173f53,roughness:.12,metalness:.38,emissive:0x164c65,emissiveIntensity:.22,transparent:true,opacity:.94});
         const w=slab(4.35,ROUT,a0+.004,a1-.004,.07,waterMat);w.userData.pick={k:"r",id:rm.id};scene.add(w);pickables.push(w);
       }
-      const wallMat=new T.MeshStandardMaterial({color:wallPaper,roughness:.9,side:T.DoubleSide,transparent:true,opacity:1});
+      const wallMat=new T.MeshStandardMaterial({color:wallPaper,roughness:.65,metalness:.04,side:T.DoubleSide,transparent:true,opacity:1});
       const wall=new T.Mesh(new T.CylinderGeometry(ROUT,ROUT,.8,24,1,true,Math.PI/2-a1,a1-a0),wallMat);
       wall.position.y=.4;wall.receiveShadow=true;scene.add(wall);
       const dv=add(new T.BoxGeometry(ROUT-RIN+.1,.5,.08),trim,polar((RIN+ROUT)/2,a0,.25),null,scene);dv.rotation.y=-a0;
@@ -1223,23 +1373,47 @@ const Stage=(()=>{
       const pmat=new T.MeshBasicMaterial({map:ptex,transparent:true,depthWrite:false});
       const pg=new T.Group();pg.position.copy(polar(2.9,a,FLOOR+.012));pg.rotation.y=Math.PI/2-a;scene.add(pg);
       const pl=new T.Mesh(new T.PlaneGeometry(1.75,.33),pmat);pl.rotation.x=-Math.PI/2;pl.userData.pick={k:"r",id:rm.id};pg.add(pl);pickables.push(pl);
-      const grp=new T.Group();scene.add(grp);props(rm.id,a,grp);
+      const grp=new T.Group();scene.add(grp);props(rm.id,a,grp);roomDecor(rm.id,a,grp);
       rooms.push({i,id:rm.id,a,mat,wallMat,pmat});
     });
 
-    // the family: pawns
-    const PAWN=[[0,0],[.27,0],[.27,.05],[.22,.09],[.14,.14],[.1,.42],[.17,.47],[.17,.52],[.09,.56],[0,.57]].map(p=>new T.Vector2(p[0],p[1]));
-    const pawnGeo=new T.LatheGeometry(PAWN,28),headGeo=new T.SphereGeometry(.14,20,14),haloGeo=new T.RingGeometry(.31,.42,40);
+    chandelier=buildChandelier();
+    // the family: miniature Victorian character figures, still clickable suspects.
+    const headGeo=new T.SphereGeometry(.115,20,14),haloGeo=new T.RingGeometry(.31,.42,40);
     const haloMat=new T.MeshBasicMaterial({color:0xffcf6b,transparent:true,opacity:.85,depthWrite:false,side:T.DoubleSide});
+    const skinSet=[0xeac7a7,0xc99777,0xf0c6b1,0xb98869,0xdec09f,0xe9cda9];
     SUSPECTS.forEach((s,i)=>{
-      const g=new T.Group();
-      const mat=new T.MeshStandardMaterial({color:SUS_COL[s.id],roughness:.4,metalness:.15,emissive:0xffbf55,emissiveIntensity:0});
-      const body=new T.Mesh(pawnGeo,mat),head=new T.Mesh(headGeo,mat);head.position.y=.69;
-      body.castShadow=head.castShadow=true;
-      const halo=new T.Mesh(haloGeo,haloMat.clone());halo.rotation.x=-Math.PI/2;halo.position.y=.015;halo.visible=false;
-      const lab=label(s.short);lab.position.y=1.1;
-      g.add(body,head,halo,lab);scene.add(g);
-      body.userData.pick=head.userData.pick={k:"s",id:s.id};pickables.push(body,head);
+      const g=new T.Group(),mat=new T.MeshStandardMaterial({color:SUS_COL[s.id],roughness:.63,metalness:.06,emissive:0xffbf55,emissiveIntensity:0});
+      // Detailed miniatures: tailored coats, recognisable silhouettes, hats, hands.
+      const base=add(new T.CylinderGeometry(.24,.28,.085,24),Mat(0x503b31,{m:.2,r:.55}),V(0,.044,0),null,g);
+      const footMat=Mat(0x281b20,{r:.7});
+      for(const x of [-.09,.09]){
+        add(new T.CylinderGeometry(.055,.06,.31,10),footMat,V(x,.20,0),null,g);
+        add(new T.BoxGeometry(.12,.052,.18),footMat,V(x,.085,.045),null,g);
+      }
+      const torso=new T.Mesh(new T.CylinderGeometry(.118,i%2?.21:.235,.38,16),mat);torso.position.y=.48;torso.castShadow=true;torso.userData.pick={k:"s",id:s.id};g.add(torso);pickables.push(torso);
+      if(i===2||i===4){const skirt=add(new T.ConeGeometry(.24,.33,18),mat,V(0,.29,0),null,g);skirt.userData.pick={k:"s",id:s.id};pickables.push(skirt);}
+      const scarf=add(new T.BoxGeometry(.11,.18,.028),Mat(0xf3e6d3,{r:.9}),V(0,.55,.13),null,g,true);
+      const skin=Mat(skinSet[i],{r:.81});
+      const head=new T.Mesh(headGeo,skin);head.position.y=.775;head.castShadow=true;head.userData.pick={k:"s",id:s.id};g.add(head);pickables.push(head);
+      const hair=Mat(i%2?0x342622:0x473125,{r:.91});
+      add(new T.SphereGeometry(.123,15,12),hair,V(0,.818,-.025),null,g).scale.set(1, .58, .91);
+      if(i===1||i===3||i===5){
+        const hat=Mat([0x322331,0x493327,0x33252a][i%3],{r:.75});
+        add(new T.CylinderGeometry(.17,.17,.026,18),hat,V(0,.89,0),null,g);
+        add(new T.CylinderGeometry(.11,.116,.10,18),hat,V(0,.951,0),null,g);
+      }else if(i===0||i===2){
+        const bonnet=Mat(0x8b576a,{r:.86});
+        add(new T.TorusGeometry(.115,.018,8,24,Math.PI),bonnet,V(0,.83,.044),[0,0,Math.PI],g,true);
+      }
+      for(const side of [-1,1]){
+        const arm=add(new T.CylinderGeometry(.049,.057,.29,10),mat,V(side*.18,.49,0),[0,0,side*.24],g);
+        arm.userData.pick={k:"s",id:s.id};pickables.push(arm);
+        add(new T.SphereGeometry(.052,9,8),skin,V(side*.216,.32,0),null,g,true);
+      }
+      const halo=new T.Mesh(haloGeo,haloMat.clone());halo.rotation.x=-Math.PI/2;halo.position.y=.016;halo.visible=false;
+      const lab=label(s.short);lab.position.y=1.12;
+      g.add(halo,lab);scene.add(g);
       pieces[s.id]={g,mat,base:new T.Color(SUS_COL[s.id]),halo,lab,kind:"s",idx:i,to:null,anim:null,glow:0};
     });
     // the methods: floating brass medallions
@@ -1341,10 +1515,10 @@ const Stage=(()=>{
 
   function applySaver(){
     if(!st.ok)return;
-    R.shadowMap.enabled=!st.saver;
+    R.shadowMap.enabled=!st.saver;R.toneMappingExposure=st.saver?1.1:1.23;
     scene.traverse(o=>{if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{m.needsUpdate=true;});});
     rain.visible=AMB();dust.visible=AMB();
-    R.setPixelRatio(Math.min(window.devicePixelRatio||1,st.saver?1.5:2));resize();poke();
+    R.setPixelRatio(Math.min(window.devicePixelRatio||1,st.saver?1.15:1.8));resize();poke();
   }
   function init(){
     try{
@@ -1409,6 +1583,7 @@ const Stage=(()=>{
     });
     cv.addEventListener("pointerup",e=>{if(drag&&e.pointerId===drag.id){if(!drag.moved)tap(e);drag=null;}});
     cv.addEventListener("pointercancel",()=>{drag=null;});
+    cv.addEventListener("wheel",e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();poke();st.zoom=clamp(st.zoom*(e.deltaY>0?1.11:.9),.52,1.65);},{passive:false});
     cv.addEventListener("pointerleave",()=>{st.hover=null;cv.classList.remove("pointing");});
   }
   function tap(e){
@@ -1486,6 +1661,21 @@ const Stage=(()=>{
     if(st.host===host&&host.contains(R.domElement))return;
     st.host=host;
     host.appendChild(R.domElement);host.appendChild(capEl);host.classList.add("ready");
+    let controls=host.querySelector(".stage-camera-controls");
+    if(!controls){
+      controls=document.createElement("div");controls.className="stage-camera-controls";
+      controls.setAttribute("role","group");controls.setAttribute("aria-label","3D manor camera controls");
+      controls.innerHTML='<button type="button" data-camera="zoomIn" title="Zoom in" aria-label="Zoom in to investigate">+</button><button type="button" data-camera="zoomOut" title="Zoom out" aria-label="Zoom out">−</button><button type="button" data-camera="top" title="Toggle overhead view" aria-label="Toggle overhead view">Top</button><button type="button" data-camera="film" title="Slow cinematic orbit" aria-label="Toggle cinematic orbit">Film</button><button type="button" data-camera="reset" title="Reset camera" aria-label="Reset camera">Reset</button>';
+      controls.addEventListener("click",e=>{const b=e.target.closest("[data-camera]");if(!b)return;const op=b.dataset.camera;poke();
+        if(op==="zoomIn")st.zoom=clamp(st.zoom*.82,.52,1.65);
+        else if(op==="zoomOut")st.zoom=clamp(st.zoom*1.2,.52,1.65);
+        else if(op==="top")st.topView=!st.topView;
+        else if(op==="film"){st.filmOrbit=!st.filmOrbit;st.follow=!st.filmOrbit;}
+        else if(op==="reset"){st.zoom=1;st.topView=false;st.filmOrbit=false;st.follow=true;want.az=.95;want.el=.9;}
+        controls.querySelectorAll("button").forEach(el=>{const pressed=(el.dataset.camera==="top"&&st.topView)||(el.dataset.camera==="film"&&st.filmOrbit);el.setAttribute("aria-pressed",String(pressed));});
+      });
+      host.appendChild(controls);
+    }
     if(ro)ro.disconnect();if(io)io.disconnect();
     if(window.ResizeObserver){ro=new ResizeObserver(resize);ro.observe(host);}
     if(window.IntersectionObserver){io=new IntersectionObserver(es=>{st.visible=es[es.length-1].isIntersecting;});io.observe(host);}
@@ -1636,13 +1826,18 @@ const Stage=(()=>{
       if(st.turnAngle!=null&&st.follow){const pf=(st.aspect||1.5)<1?.76:.86;wantT.copy(polar(3.6,st.turnAngle,.3));want.dist=clamp(Math.max(R0*pf/tanH,R0*.6/tanV),8,34);}
       else{wantT.set(0,home?.9:.1,0);want.dist=clamp(Math.max(R0/tanH,R0*.7/tanV),9,36);}
     }
-    if(!REDUCED&&f.mode==="overview"&&now-st.lastDrag>6000&&!(st.g&&st.g.status==="playing"))want.az+=dt*.07;
+    want.dist=clamp(want.dist*st.zoom,4.5,48);
+    if(st.topView)want.el=1.47;
+    if(st.filmOrbit&&!REDUCED&&now-st.lastDrag>1500)want.az+=dt*.11;
+    else if(!REDUCED&&f.mode==="overview"&&now-st.lastDrag>6000&&!(st.g&&st.g.status==="playing"))want.az+=dt*.07;
     cam.az+=(want.az-cam.az)*k;cam.el+=(want.el-cam.el)*k;cam.dist+=(want.dist-cam.dist)*k;camT.lerp(wantT,k);
     const ce=Math.cos(cam.el);
     camera.position.set(camT.x+ce*Math.cos(cam.az)*cam.dist,camT.y+Math.sin(cam.el)*cam.dist,camT.z+ce*Math.sin(cam.az)*cam.dist);
     camera.lookAt(camT);
-    scene.fog.near=cam.dist*.85;scene.fog.far=cam.dist*2.3;
+    scene.fog.density=cam.dist<12?.014:.018;
 
+    // Keep the overhead camera and envelope reveal completely unobstructed.
+    if(chandelier)chandelier.visible=!st.topView&&f.mode!=="envelope"&&f.mode!=="reveal"&&cam.el<1.24;
     // fade the walls between the camera and the room, like a dollhouse
     for(const rm of rooms){
       const fa=Math.cos(rm.a-cam.az),op=fa>.1?1-.86*Math.min(1,(fa-.1)/.55):1;
@@ -1800,12 +1995,15 @@ const Stage=(()=>{
       if(t>st.nextBolt){st.boltAt=t;st.nextBolt=t+(st.code?60+Math.random()*60:12+Math.random()*8);}
       const bt=t-st.boltAt,amp=st.code?.4:.7;let fb=0;
       if(bt>=0&&bt<.8)fb=(bt<.08?1:bt<.16?.25:bt<.26?.8:Math.max(0,.8-(bt-.26)*1.5))*amp;
-      hemi.intensity=.66+1.2*fb;moonL.intensity=.6+1*fb;
+      hemi.intensity=.7+1.2*fb;moonL.intensity=.94+1*fb;
       const fv=(fb*.35).toFixed(2);if(fv!==st.flash){st.flash=fv;st.host.style.setProperty("--flash",fv);}
-    }else if(st.flash!=="0.00"){st.flash="0.00";hemi.intensity=.66;moonL.intensity=.6;if(st.host)st.host.style.setProperty("--flash","0");}
+    }else if(st.flash!=="0.00"){st.flash="0.00";hemi.intensity=.7;moonL.intensity=.94;if(st.host)st.host.style.setProperty("--flash","0");}
 
+    // Flame flicker is subtle, not a disco effect; saver mode keeps it static.
+    for(const light of warmLights)light.light.intensity=light.base*(1+(AMB()?Math.sin(t*5.9+light.phase)*.032+Math.sin(t*9.8+light.phase)*.016:0));
+    for(const flame of flames){const q=AMB()?Math.sin(t*10.3+flame.offset):0;flame.mesh.scale.y=2.02+q*.18;flame.g.rotation.z=q*.08;}
     // lights and atmosphere
-    lamp.intensity=1.05+(AMB()?Math.sin(t*7.3)*.04+Math.sin(t*12.1)*.03:0);
+    lamp.intensity=1.4+(AMB()?Math.sin(t*7.3)*.045+Math.sin(t*12.1)*.024:0);
     let fl=0;
     if((f.mode==="room"||f.mode==="reveal")&&f.room>=0){focusLight.position.copy(polar(3.9,ang(f.room),2.3));fl=1.5;}
     focusLight.intensity+=(fl-focusLight.intensity)*.08;
@@ -1839,7 +2037,7 @@ const Stage=(()=>{
   api.setKnow=row=>{const k=row?JSON.stringify(row):"";if(k!==st.knowK){st.knowK=k;poke();}st.know=row||null;};
   api.setMe=(uid,dec)=>{if(st.me!==uid)poke();st.me=uid||null;st.dec=dec||{};};
   api.setSeatHex=arr=>{st.seatHex=arr&&arr.length?arr:null;};
-  api.setFollow=on=>{st.follow=!!on;poke();};
+  api.setFollow=on=>{st.follow=!!on;if(on)st.filmOrbit=false;poke();};
   api.setSaver=on=>{st.saver=!!on;applySaver();};
   api.where=id=>{
     const pc=pieces[id];if(!st.ok||!pc)return null;
@@ -1847,7 +2045,7 @@ const Stage=(()=>{
     const r=R.domElement.getBoundingClientRect();
     return {x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height};
   };
-  api.ready=()=>st.ok;
+  api.ready=()=>st.ok;api.getCamera=()=>({zoom:st.zoom,topView:st.topView,filmOrbit:st.filmOrbit,saver:st.saver});
   return api;
 })();
 

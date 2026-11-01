@@ -104,3 +104,17 @@ Your original Render game URL is unchanged. New code must be deployed to the exi
 ## v1.5.1 environment art
 
 The main site and detective lobby now use bundled moonlit-manor artwork behind legible panels; cinematic scenes are bundled as compressed WebP images with automatic narration. The 3D manor and game rules are unchanged.
+
+## v1.6.0 — Cinematic, interactive manor board
+
+This release preserves the deduction and multiplayer rules while making the genuine WebGL scene more cinematic:
+
+- Procedurally detailed marble, wood, weathered stone and ornamental carpet materials (bundled, no external model downloads).
+- Filmic ACES colour grading, warmer candle/chandelier lighting, cooler moonlight, shadow refinement and atmospheric fog.
+- Expanded furniture and room details for the Greenhouse, Wine Cellar, Attic, Boathouse, Music Room and Portrait Gallery.
+- Miniature Victorian character figurines replace plain suspect pawns; each remains a selectable, server-backed card identity.
+- Camera buttons: `+` zoom in, `−` zoom out, `Top` overhead view, `Film` slow orbit and `Reset`. Drag remains available; Ctrl/Command + wheel zooms.
+- Automatic occlusion protection keeps the envelope and final evidence visible when overhead or zoomed to the verdict.
+- Mobile/battery saver reduces resolution, disables soft shadow work and retains all gameplay interactions.
+
+The concept artwork is a **visual target**, not a rendered background masquerading as interactive 3D; actual quality depends on the device's GPU. Verify visually on physical phones and browsers before a production launch.

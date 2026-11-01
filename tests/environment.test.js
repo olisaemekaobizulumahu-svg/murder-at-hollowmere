@@ -36,6 +36,6 @@ test('the actual multiplayer server serves cinematic assets and the updated vers
    assert.match(response.headers.get('content-type')||'',/image\/webp/);
   }
   const version=await fetch(url+'/version');
-  assert.equal((await version.json()).version,'1.5.1');
+  assert.equal((await version.json()).version,require('../package.json').version);
  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });

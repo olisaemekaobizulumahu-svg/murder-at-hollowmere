@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233a2a45'/%3E%3Cpath d='M14 22h36v24H14z' fill='%23fbf6ea'/%3E%3Cpath d='M14 22l18 14 18-14' fill='none' stroke='%239b2330' stroke-width='3'/%3E%3Ccircle cx='32' cy='36' r='6' fill='%239b2330'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Courier+Prime:wght@400;700&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Cinzel:wght@500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: a card table. The case header on top; the action panel and your hand of ivory playing cards in the main column; the detective's ledger beside it on wide screens and behind a tab on phones; the case log typed like a police report. */
 :root{
@@ -26,10 +26,10 @@
   --back-1:#3a2342; --back-2:rgba(216,176,96,.32); --back-seal:#9b2330; --hi:rgba(255,255,255,.7);
   --who-c:#8b2c3a; --how-c:#2b674b; --where-c:#2c4b7a;
   --shadow:0 1px 2px rgba(35,26,41,.12),0 8px 22px rgba(35,26,41,.08);
-  --f-display:"IM Fell English","Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --f-sc:"IM Fell English SC","IM Fell English",Georgia,serif;
-  --f-body:"Alegreya Sans","Gill Sans","Segoe UI",system-ui,sans-serif;
-  --f-type:"Courier Prime","Courier New",ui-monospace,monospace;
+  --f-display:"Cormorant Garamond","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --f-sc:"Cinzel","Cormorant Garamond",Georgia,serif;
+  --f-body:"Source Sans 3","Segoe UI","Aptos",system-ui,sans-serif;
+  --f-type:"IBM Plex Mono","Courier New",ui-monospace,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -57,7 +57,8 @@
 body{
   background-color:var(--bg); color:var(--ink);
   background-image:repeating-linear-gradient(45deg,var(--lattice) 0 1px,transparent 1px 24px),repeating-linear-gradient(-45deg,var(--lattice) 0 1px,transparent 1px 24px);
-  font-family:var(--f-body); font-size:16px; line-height:1.5;
+  font-family:var(--f-body); font-size:16px; line-height:1.55; letter-spacing:.005em;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
 }
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
@@ -244,30 +245,39 @@ body.boardfull{overflow:hidden}
 .cast-item b{display:block;font-family:var(--f-display);font-weight:400;font-size:1.08rem;color:var(--ink)}
 
 /* playing cards */
-.cards{display:flex;flex-wrap:wrap;gap:10px}
-.pc{--k:var(--who-c);position:relative;flex:none;width:94px;aspect-ratio:5/7;max-width:100%;background:var(--card);color:var(--card-ink);border:0;border-radius:8px;
-  box-shadow:inset 0 0 0 1px var(--card-line),inset 0 0 0 4px var(--card),inset 0 0 0 5px color-mix(in srgb,var(--k) 50%,var(--card)),var(--shadow);
-  display:grid;grid-template-rows:auto 1fr auto;justify-items:center;padding:10px 7px 10px;text-align:center;
-  transform:perspective(700px) translateY(var(--fy,0px)) rotateZ(var(--rz,0deg)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px));transition:transform .2s ease-out}
-.cards.fan{justify-content:center;flex-wrap:nowrap;padding:12px 10px 24px}
-.cards.fan .pc{margin-inline:-8px;transform-origin:50% 130%}
-.cards.fan .pc:hover{--ty:-16px;z-index:2}
-.cards.fan.tight .pc{margin-inline:-21px}
+.cards{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.pc{--k:var(--who-c);position:relative;isolation:isolate;flex:none;width:108px;aspect-ratio:5/7;max-width:100%;background:
+  linear-gradient(180deg,rgba(255,255,255,.88),rgba(255,255,255,.22) 15%,transparent 30%),
+  radial-gradient(circle at 50% 18%,color-mix(in srgb,var(--k) 11%,transparent),transparent 38%),
+  linear-gradient(180deg,#fffdf7 0%,#f6efdf 100%);
+  color:var(--card-ink);border:1px solid color-mix(in srgb,var(--k) 22%,var(--card-line));border-radius:16px;
+  box-shadow:0 14px 30px rgba(0,0,0,.18), inset 0 0 0 1px rgba(255,255,255,.72), inset 0 0 0 5px rgba(250,245,235,.96), inset 0 0 0 6px color-mix(in srgb,var(--k) 34%,#e8dcc5);
+  display:grid;grid-template-rows:auto 1fr auto;justify-items:center;align-items:start;padding:12px 10px 14px;text-align:center;overflow:hidden;
+  transform:perspective(700px) translateY(var(--fy,0px)) rotateZ(var(--rz,0deg)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px));transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, filter .18s ease}
+.pc::before{content:"";position:absolute;inset:7px;border-radius:11px;border:1px solid color-mix(in srgb,var(--k) 26%,rgba(255,255,255,.55));pointer-events:none;opacity:.95}
+.cards.fan{justify-content:center;flex-wrap:nowrap;padding:14px 12px 28px}
+.cards.fan .pc{margin-inline:-10px;transform-origin:50% 130%}
+.cards.fan .pc:hover{--ty:-18px;z-index:2}
+.cards.fan.tight .pc{margin-inline:-24px}
 .handbox{min-width:0;overflow-x:clip}
 .pc::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .2s;
-  background:radial-gradient(circle at var(--mx,50%) var(--my,30%),rgba(255,255,255,.45),rgba(255,255,255,0) 55%)}
+  background:radial-gradient(circle at var(--mx,50%) var(--my,26%),rgba(255,255,255,.48),rgba(255,255,255,0) 52%)}
 .pc.tilt::after{opacity:1}
 .pc.tilt{transition:transform .06s linear}
 .pc.how{--k:var(--how-c)} .pc.where{--k:var(--where-c)}
-.pc-k{font-family:var(--f-sc);font-size:.72rem;letter-spacing:.14em;color:var(--k);text-transform:lowercase}
-.pc-i{font-size:2.1rem;align-self:center;line-height:1}
-.pc-n{font-family:var(--f-display);font-size:.93rem;line-height:1.1;text-wrap:balance}
-.pc.sm{width:74px;padding:7px 5px 8px}
-.pc.sm .pc-i{font-size:1.6rem} .pc.sm .pc-n{font-size:.8rem} .pc.sm .pc-k{font-size:.64rem}
-.pc.lg{width:118px}
-.pc.lg .pc-i{font-size:2.8rem} .pc.lg .pc-n{font-size:1.05rem}
+.pc-k{font-family:var(--f-sc);font-size:.68rem;font-weight:600;letter-spacing:.18em;color:var(--k);text-transform:uppercase;line-height:1.05}
+.pc-i{font-size:2.35rem;align-self:center;line-height:1;display:grid;place-items:center;width:3rem;height:3rem;border-radius:50%;background:color-mix(in srgb,var(--k) 10%,rgba(255,255,255,.78));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 16%,rgba(255,255,255,.55));margin:8px 0 10px}
+.pc-n{font-family:var(--f-display);font-size:1.06rem;font-weight:600;line-height:1.02;text-wrap:balance;letter-spacing:.01em;color:#302327}
+.pc.sm{width:82px;padding:9px 6px 10px;border-radius:13px}
+.pc.sm::before{inset:5px;border-radius:9px}
+.pc.sm .pc-i{font-size:1.72rem;width:2.4rem;height:2.4rem;margin:5px 0 8px}
+.pc.sm .pc-n{font-size:.84rem} .pc.sm .pc-k{font-size:.58rem}
+.pc.lg{width:126px}
+.pc.lg .pc-i{font-size:2.95rem;width:3.5rem;height:3.5rem}
+.pc.lg .pc-n{font-size:1.14rem}
 button.pc{cursor:pointer}
-button.pc:hover{--ty:-5px}
+button.pc:hover{--ty:-7px;box-shadow:0 18px 34px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.75), inset 0 0 0 5px rgba(250,245,235,.96), inset 0 0 0 6px color-mix(in srgb,var(--k) 42%,#e8dcc5);border-color:color-mix(in srgb,var(--k) 42%,var(--card-line));filter:saturate(1.04)}
+button.pc:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--k) 25%,transparent),0 0 0 5px var(--brass-soft),0 14px 28px rgba(0,0,0,.22)}
 
 /* 3D card motion */
 .handbox.play .pc{animation:deal .7s cubic-bezier(.2,.8,.25,1) backwards;animation-delay:calc(var(--i,0) * 95ms)}
@@ -379,15 +389,16 @@ button.pc:hover{--ty:-5px}
 
 /* hand */
 #hand{display:grid;gap:16px}
-.handbox{display:grid;gap:10px}
-.handbox h3{font-size:1.15rem}
-.handbox .cards{padding-bottom:2px}
-.hand-note{font-size:.9rem;color:var(--muted)}
+.handbox{display:grid;gap:12px;padding:14px 16px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(255,253,248,.97),rgba(244,237,223,.94));border:1px solid rgba(189,154,103,.38);box-shadow:0 10px 28px rgba(0,0,0,.12)}
+.handbox h3{font-size:1.28rem;letter-spacing:.01em;color:#34242a}
+.handbox .cards{padding-bottom:4px}
+.hand-note{font-size:.94rem;color:#6a5a57;line-height:1.45}
 
 /* tabs */
-.tabbar{display:flex;gap:4px;border-bottom:1px solid var(--line)}
-.tabbar button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;font:700 .98rem var(--f-body);color:var(--muted);cursor:pointer;margin-bottom:-1px}
-.tabbar button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--brass)}
+.tabbar{display:flex;gap:8px;border-bottom:1px solid rgba(198,167,114,.35);padding-bottom:4px;flex-wrap:wrap}
+.tabbar button{background:rgba(255,248,236,.55);border:1px solid transparent;border-radius:999px;padding:9px 14px;font:700 .98rem var(--f-body);color:var(--muted);cursor:pointer;margin-bottom:-1px;transition:all .18s ease}
+.tabbar button:hover{color:var(--ink);border-color:rgba(198,167,114,.45);background:rgba(255,251,244,.86)}
+.tabbar button[aria-selected="true"]{color:#35261d;border-color:rgba(195,156,88,.52);background:linear-gradient(180deg,#f8ecd3,#efdcaf);box-shadow:0 6px 16px rgba(126,88,24,.12)}
 
 /* notebook ledger */
 .ledger-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 12px 12px;
@@ -412,16 +423,16 @@ button.pc:hover{--ty:-5px}
 .cell.auto.y{color:var(--how)}
 .cell.man{color:var(--brass);font-family:var(--f-display);font-size:1.15rem}
 .cell:disabled{cursor:default}
-.legend{font-size:.85rem;color:var(--muted);margin:10px 4px 0}
+.legend{font-size:.88rem;color:var(--muted);margin:12px 4px 0;line-height:1.5}
 
 /* case log */
-.logbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
-.log{list-style:none;margin:0;padding:0;font-family:var(--f-type);font-size:.93rem;line-height:1.45;display:grid;gap:7px}
+.logbox{background:linear-gradient(180deg,rgba(255,252,247,.98),rgba(246,239,227,.96));border:1px solid rgba(190,157,108,.36);border-radius:16px;padding:16px 18px;box-shadow:0 12px 30px rgba(0,0,0,.12)}
+.log{list-style:none;margin:0;padding:0;font-family:var(--f-type);font-size:.95rem;line-height:1.55;display:grid;gap:8px;color:#413536}
 .log li{padding-left:14px;position:relative}
-.log li::before{content:"";position:absolute;left:0;top:.65em;width:5px;height:5px;background:var(--line);border-radius:50%}
-.log li.div{padding:6px 0 0;margin-top:4px;border-top:1px dashed var(--line);color:var(--muted);font-size:.82rem;letter-spacing:.06em;text-transform:uppercase}
+.log li::before{content:"";position:absolute;left:0;top:.72em;width:5px;height:5px;background:#c6a062;border-radius:50%;box-shadow:0 0 0 2px rgba(198,160,98,.16)}
+.log li.div{padding:8px 0 0;margin-top:6px;border-top:1px dashed rgba(190,157,108,.45);color:var(--muted);font-size:.8rem;letter-spacing:.09em;text-transform:uppercase}
 .log li.div::before{display:none}
-.log li.big{color:var(--brass);font-weight:700}
+.log li.big{color:#8b6120;font-weight:700}
 .log li.bad{color:var(--seal)}
 .log .ref{font-family:var(--f-type)}
 #rulesT .rules{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
@@ -665,6 +676,52 @@ body::before{background:#0b1019}
 @media(prefers-reduced-transparency:reduce){
  #home .hero-join,#home .hero-copy,#table .bar,#home .cast-item{backdrop-filter:none}
 }
+
+
+/* v1.5.2: refined card table typography and presentation. */
+#table .panel h2,#table .panel h3,#table .respond h3,#table .dock-t b{letter-spacing:.01em}
+#table .panel{border-radius:16px}
+#table .respond{padding:16px 18px;border-radius:16px;background:linear-gradient(180deg,rgba(255,252,248,.98),rgba(246,239,227,.96));border:1px solid rgba(192,157,105,.42);box-shadow:0 14px 32px rgba(0,0,0,.14)}
+#table .respond .coach{color:#5d4c47;font-size:.95rem}
+#table #asking .ask-row,#table #panel .actions{gap:12px}
+#table .dock{background:linear-gradient(180deg,rgba(19,19,28,.96),rgba(10,11,18,.98));border-top:2px solid rgba(220,181,121,.72)}
+#table .dock-t b{color:#f6e2bc}
+#table .dock-t span{color:#d5c4ad}
+#table .dock-cards .pc{box-shadow:0 10px 22px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.7), inset 0 0 0 4px rgba(250,245,235,.96), inset 0 0 0 5px color-mix(in srgb,var(--k) 38%,#e8dcc5)}
+#table .ledger-wrap{background:linear-gradient(180deg,rgba(252,248,241,.96),rgba(244,236,223,.94));border-color:rgba(190,157,108,.36)}
+#table .ledger thead th{font-family:var(--f-sc);font-weight:600;letter-spacing:.08em}
+#table .ledger tbody th{font-family:var(--f-body);font-weight:600}
+#table .cell:hover:not(:disabled){background:rgba(209,176,119,.18)}
+#table .cell.man{font-size:1.2rem}
+#table .handbox .cards .pc{margin-bottom:4px}
+@media(max-width:700px){#table .handbox{padding:12px 12px 14px} #table .logbox{padding:14px 14px 16px} #table .respond{padding:14px 12px}}
+
+/* v1.6.0 — Film-grade interactive WebGL manor controls and presentation */
+.stage{
+  background:radial-gradient(135% 110% at 48% 29%,#2b2838 4%,#141726 67%,#0b0d17 100%);
+  border:1px solid rgba(204,161,103,.62);
+  box-shadow:0 21px 54px rgba(1,3,10,.52),inset 0 0 0 1px rgba(247,220,167,.07);
+}
+.stage::after{
+  content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 91% 87% at 50% 49%,transparent 42%,rgba(4,5,12,.25) 77%,rgba(4,5,13,.6) 100%),linear-gradient(180deg,rgba(9,11,22,.13),transparent 28%,transparent 75%,rgba(7,8,15,.29));
+}
+.stage-cap{z-index:3}
+.stage-cap span{font-family:var(--f-body);font-size:.92rem;padding:7px 15px;border-radius:999px;background:rgba(10,13,21,.81);border:1px solid rgba(212,176,123,.33);color:#f6e8d0;box-shadow:0 4px 20px rgba(0,0,0,.32)}
+.stage-camera-controls{position:absolute;z-index:5;top:10px;left:10px;display:flex;align-items:center;gap:5px;max-width:calc(100% - 85px);flex-wrap:wrap;padding:5px;border:1px solid rgba(225,187,128,.45);border-radius:13px;background:rgba(11,14,22,.84);box-shadow:0 7px 26px rgba(0,0,0,.31);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.stage-camera-controls button{display:grid;place-items:center;min-width:35px;height:35px;padding:5px 9px;border:1px solid transparent;border-radius:8px;background:transparent;color:#f6e6cb;font:700 .85rem/1 var(--f-body);cursor:pointer;transition:background .18s ease,border-color .18s ease}
+.stage-camera-controls button:hover,.stage-camera-controls button[aria-pressed="true"]{background:rgba(190,145,75,.25);border-color:rgba(241,201,136,.56)}
+.stage-camera-controls button:focus-visible{outline:2px solid #f0d090;outline-offset:1px}
+.stage-camera-controls button:first-child,.stage-camera-controls button:nth-child(2){font-size:1.32rem}
+.stage.full .stage-camera-controls{top:calc(80px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px))}
+@media(max-width:600px){
+ .stage-camera-controls{top:8px;left:8px;gap:2px;padding:3px;max-width:calc(100% - 71px)}
+ .stage-camera-controls button{min-width:28px;height:31px;padding:4px 6px;font-size:.73rem}
+ .stage-camera-controls button:first-child,.stage-camera-controls button:nth-child(2){font-size:1.07rem}
+ .stage-cap span{font-size:.8rem;padding:6px 10px}
+ .stage.full .stage-camera-controls{top:calc(73px + env(safe-area-inset-top,0px))}
+}
+@media(prefers-reduced-motion:reduce){.stage-camera-controls button{transition:none}}
 </style>
 </head>
 <body>
@@ -676,7 +733,7 @@ body::before{background:#0b1019}
         <div class="title3d">
           <p class="eyebrow">A family mystery for 2 to 8 detectives</p>
           <h1>Murder at <em>Hollowmere</em></h1>
-          <span class="build-stamp" title="Release 1.5.1: illustrated cinematic scenes and automatic scene-synced narration" aria-label="Game version 1.5.1">v1.5.1 · portraits · illustrated cinematics</span>
+          <span class="build-stamp" title="Release 1.6.0: cinematic 3D manor materials, lighting, miniatures and camera modes" aria-label="Game version 1.6.0">v1.6.0 · portraits · cinematic 3D manor</span>
         </div>
         <section class="hero-join" aria-labelledby="joinH">
           <h2 id="joinH" class="sr-only">Take your seat</h2>
@@ -715,7 +772,7 @@ body::before{background:#0b1019}
   <section id="table" class="view" hidden>
     <header class="bar">
       <button class="link" type="button" data-act="home">← Back to the hall</button>
-      <span class="build-stamp" title="Release 1.5.1: illustrated cinematic scenes and automatic scene-synced narration" aria-label="Game version 1.5.1">v1.5.1 · portraits · illustrated cinematics</span>
+      <span class="build-stamp" title="Release 1.6.0: cinematic 3D manor materials, lighting, miniatures and camera modes" aria-label="Game version 1.6.0">v1.6.0 · portraits · cinematic 3D manor</span>
       <div class="bar-title"><span class="bar-name">Murder at Hollowmere</span><span class="bar-case" id="caseNo"></span>
         <button class="icon-btn set-open" type="button" data-act="settings" aria-label="Settings" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
       </div>
@@ -750,8 +807,8 @@ body::before{background:#0b1019}
 <div id="sr" class="sr-only" aria-live="polite"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="cinematic" hidden></div>
-<script src="rules.js?v=1.5.1"></script>
-<script src="cases.js?v=1.5.1"></script>
-<script src="app.js?v=1.5.1"></script>
+<script src="rules.js?v=1.6.0"></script>
+<script src="cases.js?v=1.6.0"></script>
+<script src="app.js?v=1.6.0"></script>
 </body>
 </html>

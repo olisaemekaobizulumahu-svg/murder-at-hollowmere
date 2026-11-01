@@ -1,7 +1,7 @@
 {
   "name": "murder-at-hollowmere",
-  "version": "1.5.1",
-  "description": "Multiplayer Victorian mystery beta with illustrated cinematic scenes, voice-over, animated story sequences, accounts, chat, tournaments and community drafts.",
+  "version": "1.6.0",
+  "description": "Cinematic 3D Victorian deduction game with detailed interactive manor, illustrated scenes and multiplayer platform.",
   "private": true,
   "main": "server.js",
   "scripts": {

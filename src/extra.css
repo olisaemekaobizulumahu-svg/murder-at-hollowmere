@@ -213,3 +213,49 @@ body::before{background:#0b1019}
 @media(prefers-reduced-transparency:reduce){
  #home .hero-join,#home .hero-copy,#table .bar,#home .cast-item{backdrop-filter:none}
 }
+
+
+/* v1.5.2: refined card table typography and presentation. */
+#table .panel h2,#table .panel h3,#table .respond h3,#table .dock-t b{letter-spacing:.01em}
+#table .panel{border-radius:16px}
+#table .respond{padding:16px 18px;border-radius:16px;background:linear-gradient(180deg,rgba(255,252,248,.98),rgba(246,239,227,.96));border:1px solid rgba(192,157,105,.42);box-shadow:0 14px 32px rgba(0,0,0,.14)}
+#table .respond .coach{color:#5d4c47;font-size:.95rem}
+#table #asking .ask-row,#table #panel .actions{gap:12px}
+#table .dock{background:linear-gradient(180deg,rgba(19,19,28,.96),rgba(10,11,18,.98));border-top:2px solid rgba(220,181,121,.72)}
+#table .dock-t b{color:#f6e2bc}
+#table .dock-t span{color:#d5c4ad}
+#table .dock-cards .pc{box-shadow:0 10px 22px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.7), inset 0 0 0 4px rgba(250,245,235,.96), inset 0 0 0 5px color-mix(in srgb,var(--k) 38%,#e8dcc5)}
+#table .ledger-wrap{background:linear-gradient(180deg,rgba(252,248,241,.96),rgba(244,236,223,.94));border-color:rgba(190,157,108,.36)}
+#table .ledger thead th{font-family:var(--f-sc);font-weight:600;letter-spacing:.08em}
+#table .ledger tbody th{font-family:var(--f-body);font-weight:600}
+#table .cell:hover:not(:disabled){background:rgba(209,176,119,.18)}
+#table .cell.man{font-size:1.2rem}
+#table .handbox .cards .pc{margin-bottom:4px}
+@media(max-width:700px){#table .handbox{padding:12px 12px 14px} #table .logbox{padding:14px 14px 16px} #table .respond{padding:14px 12px}}
+
+/* v1.6.0 — Film-grade interactive WebGL manor controls and presentation */
+.stage{
+  background:radial-gradient(135% 110% at 48% 29%,#2b2838 4%,#141726 67%,#0b0d17 100%);
+  border:1px solid rgba(204,161,103,.62);
+  box-shadow:0 21px 54px rgba(1,3,10,.52),inset 0 0 0 1px rgba(247,220,167,.07);
+}
+.stage::after{
+  content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 91% 87% at 50% 49%,transparent 42%,rgba(4,5,12,.25) 77%,rgba(4,5,13,.6) 100%),linear-gradient(180deg,rgba(9,11,22,.13),transparent 28%,transparent 75%,rgba(7,8,15,.29));
+}
+.stage-cap{z-index:3}
+.stage-cap span{font-family:var(--f-body);font-size:.92rem;padding:7px 15px;border-radius:999px;background:rgba(10,13,21,.81);border:1px solid rgba(212,176,123,.33);color:#f6e8d0;box-shadow:0 4px 20px rgba(0,0,0,.32)}
+.stage-camera-controls{position:absolute;z-index:5;top:10px;left:10px;display:flex;align-items:center;gap:5px;max-width:calc(100% - 85px);flex-wrap:wrap;padding:5px;border:1px solid rgba(225,187,128,.45);border-radius:13px;background:rgba(11,14,22,.84);box-shadow:0 7px 26px rgba(0,0,0,.31);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.stage-camera-controls button{display:grid;place-items:center;min-width:35px;height:35px;padding:5px 9px;border:1px solid transparent;border-radius:8px;background:transparent;color:#f6e6cb;font:700 .85rem/1 var(--f-body);cursor:pointer;transition:background .18s ease,border-color .18s ease}
+.stage-camera-controls button:hover,.stage-camera-controls button[aria-pressed="true"]{background:rgba(190,145,75,.25);border-color:rgba(241,201,136,.56)}
+.stage-camera-controls button:focus-visible{outline:2px solid #f0d090;outline-offset:1px}
+.stage-camera-controls button:first-child,.stage-camera-controls button:nth-child(2){font-size:1.32rem}
+.stage.full .stage-camera-controls{top:calc(80px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px))}
+@media(max-width:600px){
+ .stage-camera-controls{top:8px;left:8px;gap:2px;padding:3px;max-width:calc(100% - 71px)}
+ .stage-camera-controls button{min-width:28px;height:31px;padding:4px 6px;font-size:.73rem}
+ .stage-camera-controls button:first-child,.stage-camera-controls button:nth-child(2){font-size:1.07rem}
+ .stage-cap span{font-size:.8rem;padding:6px 10px}
+ .stage.full .stage-camera-controls{top:calc(73px + env(safe-area-inset-top,0px))}
+}
+@media(prefers-reduced-motion:reduce){.stage-camera-controls button{transition:none}}
