@@ -1,16 +1,11 @@
 {
-  "name": "murder-at-hollowmere",
-  "version": "1.4.0",
-  "description": "Multiplayer Victorian mystery beta: four themed cases, 2\u20138 detectives, animated story sequences, accounts, chat, tournaments and community drafts.",
+  "name": "murder-at-hollowmere-netlify",
+  "version": "2.0.0",
   "private": true,
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "build": "python3 build.py",
-    "test": "node --test --test-concurrency=1 tests/*.test.js"
-  },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
-  "license": "MIT"
+  "dependencies": {
+    "@netlify/blobs": "11.1.7"
+  }
 }
