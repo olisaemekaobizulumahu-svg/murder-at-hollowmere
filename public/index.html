@@ -526,6 +526,45 @@ img,svg{max-width:100%}
 @media(max-width:680px){.cine-letterbox{height:13px}.cine-topline{top:25px;letter-spacing:.07em}.cine-copy{bottom:165px;left:20px;width:calc(100% - 40px)}.cine-copy h2{font-size:clamp(2rem,10vw,3.5rem)}.cine-copy #cineSubtitle{font-size:1rem}.cine-toolbar{left:20px;right:20px;bottom:20px}.cine-controls{gap:.3rem;justify-content:space-between}.cine-controls .btn{font-size:.77rem;padding:.5rem .55rem;min-height:44px}.cine-runtime{width:100%;margin-bottom:2px}}
 @media(max-height:570px){.cine-copy{bottom:104px}.cine-copy h2{font-size:clamp(1.9rem,4vw,3rem);margin-bottom:.25rem}.cine-copy #cineSubtitle{line-height:1.25}.cine-toolbar{bottom:12px}.cine-letterbox{height:10px}}
 @media(prefers-reduced-motion:reduce){.cine-copy{animation:none}.cine-time-fill{transition:none}}
+
+/* v1.4.2: original detective portraits, not temporary concept art thumbnails. */
+.detective-portrait{display:block;object-fit:cover;object-position:center 30%;background:#1f1925;border:1px solid rgba(216,176,96,.48);box-shadow:0 4px 16px rgba(0,0,0,.14);border-radius:8px;flex-shrink:0}
+.roster-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
+.detective-card{overflow:hidden;display:flex;flex-direction:column}
+.detective-card-face{width:100%;height:auto;aspect-ratio:4/5;max-height:260px;object-fit:cover;border-radius:8px 8px 4px 4px;margin-bottom:12px}
+.detective-card h3{font-size:clamp(1.12rem,1.7vw,1.35rem)}
+.character-picker{overflow:hidden}
+.character-row{display:block;border-top:1px solid var(--line);padding-top:14px;margin-top:16px}
+.character-selected{display:flex;align-items:center;gap:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:12px;margin:10px 0}
+.character-selected-face{width:96px;height:120px}
+.character-selected h4{font:normal 1.5rem/1.15 var(--f-display);margin:0 0 6px}
+.character-selected b{display:block;color:var(--brass);font-size:.9rem}
+.character-selected p{font-size:.91rem;color:var(--muted);margin-top:6px}
+.character-select-label{display:block;font-size:.8rem;font-weight:700;color:var(--muted);margin:0 0 4px}
+.character-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-top:15px}
+.character-option{border:2px solid var(--line);border-radius:10px;min-width:0;background:var(--surface);color:var(--ink);padding:6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;text-align:center;transition:border-color .15s ease,transform .15s ease,box-shadow .15s ease}
+.character-option:hover{border-color:var(--brass);transform:translateY(-2px)}
+.character-option.is-selected{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass-soft)}
+.character-option-face{width:100%;height:auto;aspect-ratio:4/5;border-radius:6px;max-height:155px}
+.character-option span{font:700 .82rem/1.15 var(--f-body);padding:3px 1px;min-height:2.15em;overflow-wrap:anywhere}
+.character-option small{font-size:.7rem;color:var(--brass)}
+.guestlist li{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.guest-portrait{width:38px;height:46px;border-radius:6px;margin-right:2px}
+.detective-playing,.winner-portrait{display:flex;align-items:center;gap:12px;margin:14px 0;padding:11px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.detective-playing-face{width:64px;height:80px}
+.winner-portrait-face{width:83px;height:104px}
+.detective-playing h3,.winner-portrait h3{font-size:1.42rem;margin:3px 0}
+.detective-playing small,.winner-portrait p{color:var(--muted)}
+@media(max-width:700px){.character-options{grid-template-columns:repeat(2,minmax(0,1fr))}.detective-card-face{max-height:none}.guestlist li .char-tag{font-size:.72rem}.character-selected-face{width:79px;height:100px}.character-option-face{max-height:220px}}
+@media(min-width:701px) and (max-width:930px){.character-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.character-option{transition:none}.character-option:hover{transform:none}}
+
+/* Character portrait also appears in each live turn indicator above the 3D manor. */
+.seat{grid-template-columns:10px 36px minmax(90px,1fr);min-width:167px;gap:2px 8px}
+.seat .sw{grid-column:1;grid-row:1/3}
+.seat .seat-portrait{grid-column:2;grid-row:1/3;width:34px;height:43px;border-radius:5px}
+.seat .seat-butler{display:grid;place-items:center;font-size:1.3rem;background:var(--brass-soft)}
+.seat .sn,.seat .ss{grid-column:3;min-width:0}
 </style>
 </head>
 <body>

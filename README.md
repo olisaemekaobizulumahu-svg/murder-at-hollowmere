@@ -78,3 +78,7 @@ For developers, the API requires the per-device `pid` and `key` and must be acce
 - If **everyone** is away/offline, game progression and turn countdowns **pause**. Timers resume with their remaining time when an active detective returns.
 - A cold server restart resets expired clock timestamps to avoid instant mass skipping on restored rooms. Previous automatic-away flags are cleared on restoration; manual Away choices are preserved.
 - For a fresh test, create a new room after the corrected Render deployment. Existing state on a free Render service is not guaranteed to persist between restarts.
+
+## Version 1.4.2 — Detective portraits
+
+Eight original local WebP detective portraits are included in `public/assets/detectives/`. The home roster, lobby seat indicators, visual character picker, active investigator panel and case-winning screen now use the chosen image. The 3D board retains its original stylized pieces, and gameplay is unchanged. See `qa/CHARACTER_PORTRAIT_QA.md` for verification.

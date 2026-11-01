@@ -29,14 +29,14 @@ const CARD={};
 [["s",SUSPECTS],["m",METHODS],["r",ROOMS]].forEach(([k,l])=>l.forEach(c=>{c.k=k;CARD[c.id]=c;}));
 const ALL=[...SUSPECTS,...METHODS,...ROOMS].map(c=>c.id);
 const DETECTIVES=[
- {id:"blackwood",name:"Inspector Arthur Blackwood",title:"The Methodical Investigator",icon:"🕵️",bio:"An inspector who believes every crime leaves a pattern. He distrusts grand speeches and trusts small inconsistencies."},
- {id:"ashford",name:"Lady Evelyn Ashford",title:"The Social Strategist",icon:"🎭",bio:"A society insider who remembers what people said—and what they were careful not to say."},
- {id:"crowe",name:"Dr. Sebastian Crowe",title:"The Forensic Mind",icon:"🔍",bio:"A physician fascinated by physical evidence, odd timelines and the limits of certainty."},
- {id:"whitmore",name:"Miss Beatrice Whitmore",title:"The Fearless Investigator",icon:"🗝️",bio:"An independent investigator who asks the uncomfortable question nobody else dares to voice."},
- {id:"graves",name:"Professor Edmund Graves",title:"The Archivist",icon:"📚",bio:"An antiquarian whose memory for old letters and family histories makes him formidable."},
- {id:"noir",name:"Madame Celeste Noir",title:"The Observer",icon:"🌙",bio:"An astute reader of people who notices hesitation, deflection and carefully rehearsed answers."},
- {id:"sterling",name:"Mr. Nathaniel Sterling",title:"The Interrogator",icon:"⚖️",bio:"A former barrister who follows contradictions through even the most polished alibis."},
- {id:"ravenscroft",name:"Duchess Victoria Ravenscroft",title:"The Keen Eye",icon:"🦉",bio:"A sharp-eyed traveller and collector who rarely misses a detail in a crowded room."}
+ {id:"blackwood",portrait:"assets/detectives/blackwood.webp",name:"Inspector Arthur Blackwood",title:"The Methodical Investigator",icon:"🕵️",bio:"An inspector who believes every crime leaves a pattern. He distrusts grand speeches and trusts small inconsistencies."},
+ {id:"ashford",portrait:"assets/detectives/ashford.webp",name:"Lady Evelyn Ashford",title:"The Social Strategist",icon:"🎭",bio:"A society insider who remembers what people said—and what they were careful not to say."},
+ {id:"crowe",portrait:"assets/detectives/crowe.webp",name:"Dr. Sebastian Crowe",title:"The Forensic Mind",icon:"🔍",bio:"A physician fascinated by physical evidence, odd timelines and the limits of certainty."},
+ {id:"whitmore",portrait:"assets/detectives/whitmore.webp",name:"Miss Beatrice Whitmore",title:"The Fearless Investigator",icon:"🗝️",bio:"An independent investigator who asks the uncomfortable question nobody else dares to voice."},
+ {id:"graves",portrait:"assets/detectives/graves.webp",name:"Professor Edmund Graves",title:"The Archivist",icon:"📚",bio:"An antiquarian whose memory for old letters and family histories makes him formidable."},
+ {id:"noir",portrait:"assets/detectives/noir.webp",name:"Madame Celeste Noir",title:"The Observer",icon:"🌙",bio:"An astute reader of people who notices hesitation, deflection and carefully rehearsed answers."},
+ {id:"sterling",portrait:"assets/detectives/sterling.webp",name:"Mr. Nathaniel Sterling",title:"The Interrogator",icon:"⚖️",bio:"A former barrister who follows contradictions through even the most polished alibis."},
+ {id:"ravenscroft",portrait:"assets/detectives/ravenscroft.webp",name:"Duchess Victoria Ravenscroft",title:"The Keen Eye",icon:"🦉",bio:"A sharp-eyed traveller and collector who rarely misses a detail in a crowded room."}
 ];
 const DETECTIVE_BY_ID=Object.fromEntries(DETECTIVES.map(d=>[d.id,d]));
 const OPENINGS=[

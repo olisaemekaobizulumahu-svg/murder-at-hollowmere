@@ -985,16 +985,24 @@ function ipOf(req){
 
 /* ---------- the web server ---------- */
 const TYPES={".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".json":"application/json",
-  ".svg":"image/svg+xml",".png":"image/png",".ico":"image/x-icon",".webmanifest":"application/manifest+json",".txt":"text/plain; charset=utf-8"};
+  ".svg":"image/svg+xml",".png":"image/png",".webp":"image/webp",".jpg":"image/jpeg",".ico":"image/x-icon",".webmanifest":"application/manifest+json",".txt":"text/plain; charset=utf-8"};
 const files=new Map();
 function loadFiles(){
-  for(const name of fs.readdirSync(PUBLIC_DIR)){
-    const p=path.join(PUBLIC_DIR,name);if(!fs.statSync(p).isFile())continue;
-    const body=fs.readFileSync(p),type=TYPES[path.extname(name)]||"application/octet-stream";
-    const gz=/text|javascript|json|svg|manifest/.test(type)?zlib.gzipSync(body,{level:9}):null;
-    const etag='"'+crypto.createHash("sha1").update(body).digest("base64").slice(0,20)+'"';
-    files.set("/"+name,{body,gz,type,etag});
+  // Keep every bundled file in the in-memory allowlist; never map incoming URL paths to disk.
+  // Portrait art lives in a nested folder, unlike the original flat public/ files.
+  function addDir(dir,prefix){
+    for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
+      const p=path.join(dir,entry.name);
+      if(entry.isDirectory()){addDir(p,prefix+entry.name+"/");continue;}
+      if(!entry.isFile())continue; // no symlink escapes or files outside public/
+      const name=prefix+entry.name;
+      const body=fs.readFileSync(p),type=TYPES[path.extname(name)]||"application/octet-stream";
+      const gz=/text|javascript|json|svg|manifest/.test(type)?zlib.gzipSync(body,{level:9}):null;
+      const etag='"'+crypto.createHash("sha1").update(body).digest("base64").slice(0,20)+'"';
+      files.set("/"+name,{body,gz,type,etag});
+    }
   }
+  files.clear();addDir(PUBLIC_DIR,"");
 }
 const SECURITY={
   "X-Content-Type-Options":"nosniff",

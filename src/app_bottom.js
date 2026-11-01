@@ -40,6 +40,7 @@ const ACT={
   addbot:d=>addBot(d.lvl),
   localadd:()=>{S.addLocal=true;render();const i=$("#localName");if(i)i.focus();},
   localcancel:()=>{S.addLocal=false;render();},
+  pickcharacter:d=>{if(S.busy)return;api("character",{seat:d.seat,character:d.character}).then(r=>{if(!r.ok)toast(r.error);});},
   copylink:()=>{if(S.code)copyText(inviteURL(S.code),"Invite link copied. Send it to the family.");},
   sharelink:()=>{if(!S.code||!navigator.share)return;navigator.share({title:"Murder at Hollowmere",text:`Join my murder mystery at Hollowmere. Table ${S.code}.`,url:inviteURL(S.code)}).catch(()=>{});},
   copyme:()=>copyText(myLink(),"Your private link is copied. Open it on your other device."),

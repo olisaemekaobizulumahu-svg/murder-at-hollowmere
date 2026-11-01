@@ -35,6 +35,18 @@ function playAnims(root){if(REDUCED)return;root.querySelectorAll("[data-anim]").
 function vib(p){try{if(navigator.vibrate&&(!navigator.userActivation||navigator.userActivation.hasBeenActive))navigator.vibrate(p);}catch(e){}}
 const cleanNick=v=>[...String(v||"").replace(/\s+/g," ").trim()].slice(0,16).join("");
 
+/* Portraits are bundled original game assets; URLs are from fixed character metadata. */
+function detectivePortrait(d,css="",extra=""){
+  const character=d||DETECTIVES[0];
+  return `<img class="detective-portrait ${css}" src="${character.portrait}" alt="Portrait of ${esc(character.name)}" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
+}
+function detectiveIdentityHTML(g){
+  const u=ME(),player=g&&g.players&&g.players[u];
+  if(!player)return "";
+  const d=DETECTIVE_BY_ID[player.character]||DETECTIVES[0];
+  return `<div class="detective-playing" aria-label="Your detective character">${detectivePortrait(d,"detective-playing-face")}<div><span class="eyebrow">Playing as</span><h3>${esc(d.name)}</h3><small>${esc(d.title)}</small></div></div>`;
+}
+
 /* ---------- who you are: a random id and secret kept in this browser, no account ---------- */
 const B62="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 function randStr(n){const a=new Uint32Array(n);crypto.getRandomValues(a);let s="";for(const x of a)s+=B62[x%62];return s;}
@@ -549,7 +561,8 @@ function seatsHTML(g){
     const dot=on===null?"":`<span class="dot ${on?"":"off"}" title="${on?"Here now":"Not here right now"}"></span>`;
     const label=isB?"Fennimore (butler)":nick(u,g)+(u===ME()?" (you)":"");
     const sub=bot?"Computer · ":isLocal(g,u)?`On ${shortNick(nick(g.players[u].local,g))}'s device · `:"";
-    return `<li class="seat${cls}" style="--c:${colorOf(u,g)}"><span class="sw"></span><span class="sn">${esc(label)}${dot}</span><span class="ss">${esc(sub+st)}</span></li>`;
+    const portrait=isB?`<span class="seat-portrait seat-butler" aria-hidden="true">🗝️</span>`:detectivePortrait(DETECTIVE_BY_ID[g.players[u]?.character]||DETECTIVES[0],"seat-portrait");
+    return `<li class="seat${cls}" style="--c:${colorOf(u,g)}"><span class="sw"></span>${portrait}<span class="sn">${esc(label)}${dot}</span><span class="ss">${esc(sub+st)}</span></li>`;
   }).join("");
 }
 function sentence(mode){
@@ -625,7 +638,7 @@ function panelHTML(g,kn){
     }
   }
   if(g.status==="over")return top+overHTML(g);
-  return top+`${g.opening?`<section class="opening"><p class="eyebrow">Case opening</p><h3>${esc(g.opening.title)}</h3><p>${esc(g.opening.text)}</p></section>`:""}${g.finalRound?`<div class="final-banner">FINAL INVESTIGATION · The last eligible detective gets one question, then must accuse or close the case. The best score decides the honours if unsolved.</div>`:""}${progressHTML(g)}${playHTML(g,kn)}`;
+  return top+`${g.opening?`<section class="opening"><p class="eyebrow">Case opening</p><h3>${esc(g.opening.title)}</h3><p>${esc(g.opening.text)}</p></section>`:""}${g.finalRound?`<div class="final-banner">FINAL INVESTIGATION · The last eligible detective gets one question, then must accuse or close the case. The best score decides the honours if unsolved.</div>`:""}${detectiveIdentityHTML(g)}${progressHTML(g)}${playHTML(g,kn)}`;
 }
 function coach(text){return text?`<p class="coach">${text}</p>`:"";}
 function turnCoach(g,kn){
@@ -717,8 +730,9 @@ function overHTML(g){
   const canRe=host||(seatedMe&&(online(g.hostId)===false||(g.left&&g.left[g.hostId])));
   const act=canRe?`<button class="btn primary" type="button" data-act="rematch">New case, same family</button><button class="btn ghost" type="button" data-act="gohome">Back to the hall</button>`
     :`<span class="muted">${g.next?"Moving to the next case…":esc(nick(g.hostId,g))+" can start a new case for the same family."}</span><button class="btn ghost" type="button" data-act="gohome">Back to the hall</button>`;
+  const winnerPortrait=g.winner&&g.players&&g.players[g.winner]?`<div class="winner-portrait">${detectivePortrait(DETECTIVE_BY_ID[g.players[g.winner].character]||DETECTIVES[0],"winner-portrait-face")}<div><span class="eyebrow">Case solved by</span><h3>${esc(nick(g.winner,g))}</h3><p>${esc((DETECTIVE_BY_ID[g.players[g.winner].character]||DETECTIVES[0]).name)}</p></div></div>`:"";
   const ranking=Array.isArray(g.rankings)&&g.rankings.length?`<div class="end-rank"><h3>Final detective rankings</h3><ol>${g.rankings.map((r,i)=>`<li><span>${i+1}. ${esc(r.nick)}${g.bestDetective===r.seat?" · Best Detective":""}${g.winner===r.seat?" · Case Solved":""}</span><b>${r.points} pts</b></li>`).join("")}</ol></div>`:"";
-  return `<div class="panel reveal"><p class="eyebrow">The envelope</p><h2>${head}</h2>${sub}${body}${ranking}<div class="actions" style="justify-content:center">${act}</div></div>`;
+  return `<div class="panel reveal"><p class="eyebrow">The envelope</p><h2>${head}</h2>${sub}${winnerPortrait}${body}${ranking}<div class="actions" style="justify-content:center">${act}</div></div>`;
 }
 function lobbyHTML(g){
   const seats=seated(g),me=S.uid,host=g.hostId===me,inIt=!!(g.players&&g.players[me]);
@@ -728,7 +742,7 @@ function lobbyHTML(g){
     const canRemove=u!==me&&(host||p.local===me);
     const on=b?null:online(u);
     const dot=on===null||p.local?"":`<span class="dot ${on?"":"off"}" title="${on?"Here now":"Not here right now"}"></span>`;
-    return `<li style="--c:${colorOf(u,g)}"${b||p.local?' class="botrow"':""}><span class="sw"></span><span class="gn">${esc(nick(u,g))}${dot}</span><small class="char-tag">${esc((DETECTIVE_BY_ID[p.character]||DETECTIVES[0]).name)}</small>${tag}${u===g.hostId?'<span class="tag">host</span>':""}${u===me?'<span class="tag">you</span>':""}${canRemove?`<button class="link" type="button" data-act="kick" data-u="${esc(u)}" aria-label="Remove ${esc(nick(u,g))}">Remove</button>`:""}</li>`;
+    return `<li style="--c:${colorOf(u,g)}"${b||p.local?' class="botrow"':""}><span class="sw"></span>${detectivePortrait(DETECTIVE_BY_ID[p.character]||DETECTIVES[0],"guest-portrait")}<span class="gn">${esc(nick(u,g))}${dot}</span><small class="char-tag">${esc((DETECTIVE_BY_ID[p.character]||DETECTIVES[0]).name)}</small>${tag}${u===g.hostId?'<span class="tag">host</span>':""}${u===me?'<span class="tag">you</span>':""}${canRemove?`<button class="link" type="button" data-act="kick" data-u="${esc(u)}" aria-label="Remove ${esc(nick(u,g))}">Remove</button>`:""}</li>`;
   }).join("");
   const room=seats.length<MAX_SEATS;
   const link=inviteURL(g.code);
@@ -756,7 +770,11 @@ function lobbyHTML(g){
   const editableSeats=mySeats(g).filter(u=>g.players[u]&&!g.players[u].bot);
   const characterSelect=editableSeats.length?`<div class="character-picker"><h3>Choose your detective</h3><p class="muted">All eight are available immediately. Characters are cosmetic; each has the same powers and access to clues.</p>${editableSeats.map(u=>{
     const p=g.players[u],selected=DETECTIVE_BY_ID[p.character]||DETECTIVES[0];
-    return `<label class="character-row" for="character-${esc(u)}"><strong>${esc(p.nick)}</strong><select id="character-${esc(u)}" data-character-seat="${esc(u)}">${DETECTIVES.map(c=>`<option value="${c.id}" ${selected.id===c.id?"selected":""}>${c.icon} ${esc(c.name)}</option>`).join("")}</select><small>${esc(selected.title)} — ${esc(selected.bio)}</small></label>`;
+    return `<div class="character-row"><strong>${esc(p.nick)}'s detective</strong>
+      <div class="character-selected">${detectivePortrait(selected,"character-selected-face")}<div><h4>${esc(selected.name)}</h4><b>${esc(selected.title)}</b><p>${esc(selected.bio)}</p></div></div>
+      <label class="character-select-label" for="character-${esc(u)}">Choose by name</label><select id="character-${esc(u)}" data-character-seat="${esc(u)}">${DETECTIVES.map(c=>`<option value="${c.id}" ${selected.id===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select>
+      <div class="character-options" role="group" aria-label="Select a detective for ${esc(p.nick)}">${DETECTIVES.map(c=>`<button class="character-option ${selected.id===c.id?"is-selected":""}" type="button" data-act="pickcharacter" data-seat="${esc(u)}" data-character="${c.id}" aria-label="Choose ${esc(c.name)}" aria-pressed="${selected.id===c.id?"true":"false"}">${detectivePortrait(c,"character-option-face")}<span>${esc(c.name)}</span>${selected.id===c.id?`<small>Selected ✓</small>`:""}</button>`).join("")}</div>
+    </div>`;
   }).join("")}</div>`:"";
   const n=seats.length;
   const hint=n<2?(host?"You need at least two detectives. Wait for family to join, or add a computer detective or a player on this device and start now.":"You need at least two detectives to start."):n===2?"Two detectives: Fennimore the butler joins with a third hand to keep the puzzle interesting.":`${n} detectives. Up to ${MAX_SEATS} can play.`;
@@ -864,7 +882,7 @@ function rulesHTML(){
   </div>`;
 }
 function detectiveRosterHTML(){
-  return `<div class="roster-grid">${DETECTIVES.map(d=>`<article class="detective-card"><span class="detective-symbol" aria-hidden="true">${d.icon}</span><h3>${esc(d.name)}</h3><b>${esc(d.title)}</b><p>${esc(d.bio)}</p></article>`).join("")}</div>`;
+  return `<div class="roster-grid">${DETECTIVES.map(d=>`<article class="detective-card">${detectivePortrait(d,"detective-card-face")}<h3>${esc(d.name)}</h3><b>${esc(d.title)}</b><p>${esc(d.bio)}</p></article>`).join("")}</div>`;
 }
 function castHTML(){
   const grp=(k,list,title)=>`<div class="cast-grp ${KCLS[k]}"><h3>${title}</h3><div class="cast-list">${list.map(c=>`<div class="cast-item">${cardHTML(c.id,{size:"sm"})}<p><b>${esc(c.name)}</b>${esc(c.note)}</p></div>`).join("")}</div></div>`;
