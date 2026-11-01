@@ -23,7 +23,7 @@ const PACE=Math.max(.01,Number(ENV.BOT_PACE)||1);               // speed of comp
 const OFFLINE_ANSWER_MS=Number(ENV.OFFLINE_ANSWER_MS)||30000;     // answer for someone whose page has been closed this long
 const IDLE_ANSWER_MS=Number(ENV.IDLE_ANSWER_MS)||180000;          // or who has left a question unanswered this long
 const OFFLINE_TURN_MS=Number(ENV.OFFLINE_TURN_MS)||90000;         // skip the turn of someone whose page has been closed this long
-const IDLE_TURN_MS=Number(ENV.IDLE_TURN_MS)||300000;              // or who has sat on their own turn this long
+const AWAY_TURN_MS=5000;                                         // pace deliberate away-player skips when others are present
 const HOST_GONE_MS=Number(ENV.HOST_GONE_MS)||60000;               // pass hosting on when the host's page has been closed this long
 const MAX_TABLES=Number(ENV.MAX_TABLES)||1500;
 const TRUST_PROXY=ENV.TRUST_PROXY!=="0";
@@ -114,6 +114,40 @@ function seatsOf(T,pid){
   return [pid,...Object.keys(T.players).filter(u=>T.players[u]&&T.players[u].local===pid)];
 }
 const humans=T=>seated(T).filter(u=>!T.players[u].bot&&!T.players[u].local);
+/* One active, connected human is required before the game advances automatically.
+   A table where everyone closes the page or steps away must PAUSE, not race
+   through rounds in a loop. Local seats use their controller's connection. */
+function hasActiveDetective(T){
+  return humans(T).some(u=>!(T.left&&T.left[u])&&!(T.away&&T.away[u])&&connected(T.code,u));
+}
+function notifyPauseChange(T){
+  T.rev=(T.rev||0)+1;T.updatedAt=now();markDirty();broadcast(T);
+}
+function pauseIfEmpty(T){
+  if(T.status!=="playing"||T.phase==="judging"||hasActiveDetective(T))return false;
+  if(!T.pausedAt){
+    T.pausedAt=now();T.pausedClockStamp=T.clockStamp||null;
+    notifyPauseChange(T);
+  }
+  return true;
+}
+function resumeIfNeeded(T,r){
+  if(!T.pausedAt)return;
+  const elapsed=Math.max(0,now()-T.pausedAt);
+  // If a different action has already begun a new phase, touch() set a new
+  // timeout; don't extend it a second time after reconnecting.
+  if(T.clockStamp===T.pausedClockStamp){
+    if(T.turnExpiresAt)T.turnExpiresAt+=elapsed;
+    if(T.introUntil)T.introUntil+=elapsed;
+  }
+  T.pausedAt=null;T.pausedClockStamp=null;
+  if(T.clockStamp==null&&["turn","asked"].includes(T.phase)&&T.settings?.turnSeconds){
+    T.clockStamp=T.turn+":"+T.phase;
+    T.turnExpiresAt=now()+1000*T.settings.turnSeconds;
+  }
+  r.key=null; // restart only the current phase's automation delay
+  notifyPauseChange(T);
+}
 
 /* ---------- presence: which devices have this table open ---------- */
 const streams=new Set();   // {pid, code, res}
@@ -293,11 +327,11 @@ function endTurnAs(T,by){
   const nt=nextTurn(T,by);
   logp(T,{t:"turn",who:nt});Object.assign(T,{phase:"turn",turn:nt,q:null});
 }
-function skipTurn(T,who){
+function skipTurn(T,who,reason="offline"){
   if(T.status!=="playing"||T.turn!==who||!["turn","asked"].includes(T.phase))return;
   if(T.finalRound){endUnsolved(T);return;}
   const nt=nextTurn(T,who);
-  logp(T,{t:"skip",who},{t:"turn",who:nt});Object.assign(T,{phase:"turn",turn:nt,q:null});
+  logp(T,{t:"skip",who,reason},{t:"turn",who:nt});Object.assign(T,{phase:"turn",turn:nt,q:null});
 }
 function accuseAs(T,by,cards){
   if(T.status!=="playing"||T.turn!==by||!["turn","asked"].includes(T.phase))refuse("You can accuse only on your own turn.");
@@ -485,7 +519,7 @@ function plan(T,r){
     if(T.phase==="asked")return {at:at(1700,900),run:()=>botAfter(T,a)};
     return null;
   }
-  if(T.left[a])return {at:at(500,0),run:()=>{if(T.phase==="asking")passStep(T,a,"skipq");else skipTurn(T,a);}};
+  if(T.left[a])return {at:at(500,0),run:()=>{if(T.phase==="asking")passStep(T,a,"skipq");else skipTurn(T,a,"left");}};
   const ctl=controllerOf(T,a),off=offlineSince(T,ctl);
   if(T.phase==="asking"){
     if(!matches(T.secret.hands[a],T.q.cards).length)return {at:at(1000,500),run:()=>passStep(T,a,"pass")};
@@ -493,10 +527,15 @@ function plan(T,r){
     const due=Math.min(off==null?Infinity:Math.max(off+OFFLINE_ANSWER_MS,r.keyAt+3000),r.keyAt+IDLE_ANSWER_MS);
     return {at:due,run:()=>autoShow(T,a,true)};
   }
-  if(T.away[a])return {at:at(900,0),run:()=>skipTurn(T,a)};
-  if(T.turnExpiresAt&&["turn","asked"].includes(T.phase)&&T.turnExpiresAt<now()+600)return {at:T.turnExpiresAt,run:()=>skipTurn(T,a)};
-  const due=Math.min(T.turnExpiresAt||Infinity,off==null?Infinity:Math.max(off+OFFLINE_TURN_MS,r.keyAt+15000),r.keyAt+IDLE_TURN_MS);
-  return {at:due,run:()=>{if(!T.turnExpiresAt||now()<T.turnExpiresAt){T.away={...T.away,[a]:true};T.secret.autoAway[a]=true;}skipTurn(T,a);}};
+  if(T.away[a])return {at:at(AWAY_TURN_MS,0),run:()=>skipTurn(T,a,"away")};
+  // An unlimited, connected human turn NEVER expires silently. Players must
+  // end it themselves, or explicitly choose Away. This prevents idle cascades.
+  // A disconnected detective can still be skipped, but is NOT permanently
+  // marked Away: every new turn gets a fresh, visible reconnect grace period.
+  const offlineDue=off==null?Infinity:Math.max(off+OFFLINE_TURN_MS,r.keyAt+15000);
+  const due=Math.min(T.turnExpiresAt||Infinity,offlineDue);
+  if(!Number.isFinite(due))return null;
+  return {at:due,run:()=>skipTurn(T,a,(T.turnExpiresAt&&T.turnExpiresAt<=offlineDue)?"timer":"offline")};
 }
 function hostCheck(T){
   if(!["lobby","playing"].includes(T.status))return false;
@@ -515,6 +554,8 @@ function autoStep(T){
   if(tables.get(T.code)!==T)return;
   if(hostCheck(T)){touch(T);return;}
   if(T.status!=="playing")return;
+  if(pauseIfEmpty(T))return;
+  resumeIfNeeded(T,r);
   const key=stateKey(T);
   if(r.key!==key){r.key=key;r.keyAt=now();r.jit=Math.random();}
   const p=plan(T,r);if(!p)return;
@@ -910,7 +951,19 @@ function load(){
     console.log(`Loaded ${tables.size} tables and ${devices.size} devices.`);
   }catch(e){if(e.code!=="ENOENT")console.error("Couldn't read saved state:",e.message);}
   pruneTables();
-  for(const T of tables.values())if(T.status==="playing")setTimeout(()=>autoStep(T),500);
+  for(const T of tables.values())if(T.status==="playing"){
+    // A cold Render restart is not a player's choice to forfeit their turn.
+    // Previously saved deadlines can be hours old, causing immediate skips.
+    T.clockStamp=null;T.turnExpiresAt=null;
+    T.pausedAt=now();T.pausedClockStamp=null;
+    if(T.introUntil&&T.introUntil<now())T.introUntil=null;
+    if(T.secret&&T.secret.autoAway){
+      for(const u of Object.keys(T.secret.autoAway))if(T.secret.autoAway[u]){
+        if(T.away)delete T.away[u];delete T.secret.autoAway[u];
+      }
+    }
+    setTimeout(()=>autoStep(T),500);
+  }
 }
 setInterval(()=>{pruneTables();pruneDevices(false);},3600e3).unref();
 
@@ -1014,6 +1067,8 @@ async function handleStream(req,res){
     let back=false;
     if(T.status==="playing")for(const u of seatsOf(T,d.pid))if(T.secret.autoAway[u]&&T.away[u]){T.away={...T.away,[u]:false};delete T.secret.autoAway[u];back=true;}
     if(back)touch(T);else broadcast(T);
+    // Resume a table when someone reconnects, without waiting for the 4s sweep.
+    setImmediate(()=>autoStep(T));
   }else {send(s,"tables",JSON.stringify(myTables(d.pid)));send(s,"profile",JSON.stringify({profile:profileOf(d.pid),cases:caseSummary(d.pid)}));}
   const bye=()=>{
     if(!streams.delete(s))return;
@@ -1049,4 +1104,5 @@ if(require.main===module){
   loadFiles();load();
   server.listen(PORT,HOST,()=>console.log(`Murder at Hollowmere is open on http://localhost:${PORT}`));
 }
-module.exports={server,tables,OPS,verdict,deduce,botQuestion,startGame,loadFiles,load};
+module.exports={server,tables,OPS,verdict,deduce,botQuestion,startGame,loadFiles,load,
+  autoStep,rt,hasActiveDetective};

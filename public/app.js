@@ -615,6 +615,9 @@ function panelHTML(g,kn){
   if(g.status==="lobby")return lobbyHTML(g);
   let top="";
   if(g.status==="playing"){
+    if(g.pausedAt){
+      top+=`<div class="banner" role="status"><span>⏸ Investigation paused: no active detectives are connected. Turns and timers will resume when someone returns. Your cards and progress are safe.</span>${g.away&&mySeats(g).some(u=>g.away[u])?`<button class="btn sm primary" type="button" data-act="back">I'm back</button>`:""}</div>`;
+    }
     const gone=(g.order||[]).filter(u=>g.away&&g.away[u]&&!(g.left&&g.left[u])&&controllerOf(g,u)!==S.uid);
     if(gone.length){
       const names=gone.map(u=>esc(nick(u,g))).join(" and "),many=gone.length>1;
@@ -834,7 +837,7 @@ function logLine(e,g){
     case "escape":return ["bad",`No detective solved the case. The best detective will be named by investigation score.`];
     case "abandon":return ["bad",`Everyone has left. The case was abandoned.`];
     case "closed":return ["bad",`The host closed the case unsolved.`];
-    case "skip":return ["",`${N(e.who,g)} ${e.who===me?"were":"was"} away, so the turn was skipped.`];
+    case "skip":return ["",e.reason==="timer"?`${N(e.who,g)} ${e.who===me?"ran":"ran"} out of turn time, so the turn passed to the next detective.`:e.reason==="offline"?`${N(e.who,g)} ${e.who===me?"were":"was"} disconnected long enough for the turn to pass.`:e.reason==="away"?`${N(e.who,g)} ${e.who===me?"were":"was"} marked away, so the turn passed.`:`${N(e.who,g)}'s turn was skipped.`];
     case "left":return ["bad",`${N(e.who,g)} left the game. Their cards are now face up.`];
     case "host":return ["",`${N(e.who,g)} ${e.who===me?"are":"is"} now hosting.`];
   }
@@ -856,7 +859,7 @@ function rulesHTML(){
   <div class="rule"><h3>Deduction points and private hints</h3><p>Each distinct question earns 3 points; revealing a previously unseen card through a question earns 5 more. Start with 20 points. A wrong accusation loses 10 points, while solving the case earns 100. You may purchase up to four private evidence hints for 3, 6, 10, then 15 points. Hints only show cards outside the envelope and never disclose the solution. At the end, scores become public.</p></div>
   <div class="rule"><h3>Your notebook</h3><p>It fills itself in from what you've seen: your cards, cards shown to you, and who couldn't answer which question. Tap a blank square to add your own ✓, ✕ or ? notes. A row turns gold once that card must be in the envelope.</p></div>
   <div class="rule"><h3>Who can play</h3><p>Anyone with the link or the table code, in any web browser. No account, nothing to install. Someone without their own phone or computer can sit at yours: when it's their move, a privacy screen asks you to pass it over. The host can also add computer detectives. Rookie, Sharp and Master computer detectives have progressively stronger deduction and questioning strategies. All accuse only when they're sure.</p></div>
-  <div class="rule"><h3>Away and leaving</h3><p>The game never waits for long. If you step away, or your page has been closed for a little while, the game skips your turns and shows a card for you when you're asked. Come back from the same link and tap “I'm back”. Leaving a game for good lays your cards face up for everyone and takes you out of the running. If the host goes, hosting passes to someone still at the table.</p></div>
+  <div class="rule"><h3>Away and leaving</h3><p>Unlimited turns do not end automatically while you are online. A chosen turn timer can expire; if you disconnect, the other detectives can continue after a reconnect grace period. If everyone is offline or marked away, the investigation pauses instead of skipping turns. Selecting Away lets the game pass your turns and answer questions until you tap “I'm back”. Leaving permanently lays your cards face up and removes you from the running. If the host goes, hosting can pass to a connected detective.</p></div>
   <div class="rule"><h3>Fair play</h3><p>The game's server shuffles and deals, and keeps the envelope sealed. Your device is only ever sent your own cards and the cards shown to you, never anyone else's hand or the answer, so nobody can peek, not even the host. Computer detectives and Fennimore play on the server too, and only use what a player in their seat would know. Accusations are checked the moment they're made.</p></div>
   </div>`;
 }
@@ -2207,7 +2210,7 @@ async function onVoice(d){if(!PLATFORM.voiceOn||!S.game||!S.game.players[d.from]
   }
  }catch(e){console.warn("Voice connection could not be established",e);}
 }
-function platformBound(){document.addEventListener("click",e=>{const b=e.target.closest("[data-cine]");if(b)cineAction(b.dataset.cine);});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&PLATFORM.cine)cineAction("skip");});document.addEventListener("submit",e=>{if(e.target.id!=="chatForm")return;e.preventDefault();const input=$("#chatMessage"),text=input?.value;if(!text?.trim())return;api("chat",{channel:PLATFORM.pan==="private"?"private":S.game?.players[S.uid]?"room":"spectators",to:$("#chatRecipient")?.value,text}).then(r=>{if(r.ok&&input)input.value="";else if(!r.ok)toast(r.error);});});document.addEventListener("change",e=>{if(e.target.id==="casePicker")PLATFORM_ACT.casechange();if(e.target.id==="chatChannel"){PLATFORM.pan=e.target.value;renderTable();}});setInterval(()=>{const c=$("#turnClock"),g=S.game;if(c&&g?.turnExpiresAt)c.textContent=Math.max(0,Math.ceil((g.turnExpiresAt-Date.now())/1000))+"s";},1000);}
+function platformBound(){document.addEventListener("click",e=>{const b=e.target.closest("[data-cine]");if(b)cineAction(b.dataset.cine);});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&PLATFORM.cine)cineAction("skip");});document.addEventListener("submit",e=>{if(e.target.id!=="chatForm")return;e.preventDefault();const input=$("#chatMessage"),text=input?.value;if(!text?.trim())return;api("chat",{channel:PLATFORM.pan==="private"?"private":S.game?.players[S.uid]?"room":"spectators",to:$("#chatRecipient")?.value,text}).then(r=>{if(r.ok&&input)input.value="";else if(!r.ok)toast(r.error);});});document.addEventListener("change",e=>{if(e.target.id==="casePicker")PLATFORM_ACT.casechange();if(e.target.id==="chatChannel"){PLATFORM.pan=e.target.value;renderTable();}});setInterval(()=>{const c=$("#turnClock"),g=S.game;if(c&&g?.turnExpiresAt)c.textContent=g.pausedAt?"Paused":Math.max(0,Math.ceil((g.turnExpiresAt-Date.now())/1000))+"s";},1000);}
 
 
 /* ---------- events ---------- */

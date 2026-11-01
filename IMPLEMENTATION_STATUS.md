@@ -49,3 +49,10 @@ npm run build
 ```
 
 Keep `data/` outside Git and never commit `.env`, password hashes or production states.
+
+
+### v1.4.1 — Human turn stability
+- Replaced automatic idle forfeits with deliberate actions or configured turn timers.
+- Stopped cascading turn skips if everyone is offline or away.
+- Preserved turn deadlines during pauses and recovery from cold Render restarts.
+- Logged explicit skip causes and added regression tests for reconnect, timing and away/idle behavior.

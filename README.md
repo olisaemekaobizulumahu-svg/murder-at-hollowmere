@@ -67,3 +67,14 @@ Version 1.4 adds two automated tests (21 total), including animated scene render
 - `IMPLEMENTATION_STATUS.md`: detailed shipped-versus-unverified checklist.
 
 For developers, the API requires the per-device `pid` and `key` and must be accessed through HTTPS when deployed. Never expose an account password or moderator key in public logs or browser JavaScript.
+
+
+### Turn-stability repair (1.4.1)
+
+- Human detectives with **No timer** selected do not lose their turn because they have been idle while connected. A player must ask/end/accuse; no silent 5-minute skip.
+- A timed turn passes only when its configured countdown expires. The event log identifies the timer as the cause.
+- If a detective disconnects but at least one other detective remains online, a 90-second reconnect grace applies before the offline turn can be skipped. A disconnected detective is **not permanently auto-marked away**.
+- Explicitly choosing Away skips that detective's turns at a measured pace, only when another active detective is connected.
+- If **everyone** is away/offline, game progression and turn countdowns **pause**. Timers resume with their remaining time when an active detective returns.
+- A cold server restart resets expired clock timestamps to avoid instant mass skipping on restored rooms. Previous automatic-away flags are cleared on restoration; manual Away choices are preserved.
+- For a fresh test, create a new room after the corrected Render deployment. Existing state on a free Render service is not guaranteed to persist between restarts.
