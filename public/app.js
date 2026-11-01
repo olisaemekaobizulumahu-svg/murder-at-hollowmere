@@ -1,5 +1,5 @@
 "use strict";
-const BUILD_VERSION='1.4.5';
+const BUILD_VERSION='1.5.1';
 /* Murder at Hollowmere: the page.
    The server deals the cards, keeps the envelope and every hand, and runs the computer
    detectives. This page shows what your own seats may see and sends your moves. */
@@ -41,6 +41,9 @@ const cleanNick=v=>[...String(v||"").replace(/\s+/g," ").trim()].slice(0,16).joi
 function detectivePortrait(d,css="",extra=""){
   const character=d||DETECTIVES[0];
   return `<img class="detective-portrait ${css}" src="${character.portrait}?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of ${esc(character.name)}" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
+}
+function butlerPortrait(css="",extra=""){
+  return `<img class="detective-portrait ${css} seat-butler-portrait" src="assets/detectives/fennimore.webp?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of Fennimore the butler" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
 }
 function detectiveIdentityHTML(g){
   const u=ME(),player=g&&g.players&&g.players[u];
@@ -561,9 +564,9 @@ function seatsHTML(g){
     }else if(g.winner===u){cls+=" turn";st="Solved it";}
     const on=isB||bot?null:online(u);
     const dot=on===null?"":`<span class="dot ${on?"":"off"}" title="${on?"Here now":"Not here right now"}"></span>`;
-    const label=isB?"Fennimore (butler)":nick(u,g)+(u===ME()?" (you)":"");
-    const sub=bot?"Computer · ":isLocal(g,u)?`On ${shortNick(nick(g.players[u].local,g))}'s device · `:"";
-    const portrait=isB?`<span class="seat-portrait seat-butler" aria-hidden="true">🗝️</span>`:detectivePortrait(DETECTIVE_BY_ID[g.players[u]?.character]||DETECTIVES[0],"seat-portrait");
+    const label=isB?"Fennimore the Butler":nick(u,g)+(u===ME()?" (you)":"");
+    const sub=isB?"House helper · ":bot?"Computer · ":isLocal(g,u)?`On ${shortNick(nick(g.players[u].local,g))}'s device · `:"";
+    const portrait=isB?butlerPortrait("seat-portrait"):detectivePortrait(DETECTIVE_BY_ID[g.players[u]?.character]||DETECTIVES[0],"seat-portrait");
     return `<li class="seat${cls}" style="--c:${colorOf(u,g)}"><span class="sw"></span>${portrait}<span class="sn">${esc(label)}${dot}</span><span class="ss">${esc(sub+st)}</span></li>`;
   }).join("");
 }
@@ -1855,6 +1858,56 @@ const Stage=(()=>{
  const W=1600,H=900, PI=Math.PI,TAU=PI*2;
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
  const lerp=(a,b,t)=>a+(b-a)*t;
+ const SCENE_STILLS={manor:{
+  arrival:"/assets/cinematics/manor-arrival.webp",
+  gathering:"/assets/cinematics/manor-gathering.webp",
+  clock:"/assets/cinematics/manor-clock.webp",
+  discovery:"/assets/cinematics/manor-discovery.webp",
+  evidence:"/assets/cinematics/manor-evidence.webp",
+  event:"/assets/cinematics/manor-study.webp",
+  portrait:"/assets/cinematics/manor-private.webp",
+  finalGathering:"/assets/cinematics/manor-gathering.webp",
+  finalReveal:"/assets/cinematics/manor-reveal.webp",
+  finalEpilogue:"/assets/cinematics/manor-verdict.webp",
+  ending:"/assets/cinematics/manor-verdict.webp"
+ }};
+ const STILL_PRESETS={
+  arrival:{start:1.02,end:1.11,panX:[-36,38],panY:[18,-26],vignette:.2,rain:1,mist:1},
+  gathering:{start:1.02,end:1.09,panX:[28,-18],panY:[12,-12],vignette:.24},
+  clock:{start:1.05,end:1.14,panX:[42,-24],panY:[16,-14],vignette:.3,lightning:true,dust:.3},
+  discovery:{start:1.04,end:1.12,panX:[-24,18],panY:[24,-18],vignette:.28,dust:.32},
+  evidence:{start:1.04,end:1.11,panX:[0,0],panY:[10,-14],vignette:.24,dust:.42},
+  event:{start:1.04,end:1.12,panX:[-30,30],panY:[14,-10],vignette:.26,dust:.38},
+  portrait:{start:1.07,end:1.14,panX:[-46,26],panY:[10,-8],vignette:.24,dust:.22},
+  finalGathering:{start:1.03,end:1.1,panX:[18,-10],panY:[10,-14],vignette:.28,dust:.22},
+  finalReveal:{start:1.03,end:1.08,panX:[0,0],panY:[10,-10],vignette:.3,dust:.25},
+  finalEpilogue:{start:1.02,end:1.08,panX:[10,-18],panY:[8,-10],vignette:.16,dust:.18,warm:1},
+  ending:{start:1.02,end:1.08,panX:[10,-18],panY:[8,-10],vignette:.16,dust:.18,warm:1}
+ };
+ const stillCache=new Map();
+ function stillPath(theme,kind){return SCENE_STILLS[theme]?.[kind]||"";}
+ function ensureStill(src){if(!src||typeof Image==="undefined")return null;let img=stillCache.get(src);if(!img){img=new Image();img.decoding="async";img.src=src;stillCache.set(src,img);}return img;}
+ function drawCoverImage(ctx,img,zoom=1,panX=0,panY=0){
+  const scale=Math.max(W/(img.naturalWidth||W),H/(img.naturalHeight||H))*zoom;
+  const dw=(img.naturalWidth||W)*scale,dh=(img.naturalHeight||H)*scale;
+  const x=(W-dw)/2+panX,y=(H-dh)/2+panY;ctx.drawImage(img,x,y,dw,dh);
+ }
+ function atmosphereDust(ctx,t,strength=.3){ctx.save();ctx.globalCompositeOperation="screen";for(let i=0;i<90;i++){const x=(rng(i+731)*W+t*(4+strength*6)+i)%W,y=(rng(i+113)*H+t*(7+strength*9)+i*2)%H;const r=.7+rng(i+887)*(1.8+strength*2.4);circle(ctx,x,y,r,`rgba(244,226,189,${.025+strength*.06})`);}ctx.restore();}
+ function drawStillScene(ctx,theme,kind,t,details){
+  if(typeof ctx?.drawImage!=="function")return false;
+  const src=stillPath(theme,kind);if(!src)return false;const img=ensureStill(src);if(!img?.complete||!img.naturalWidth)return false;
+  const p=STILL_PRESETS[kind]||{start:1.03,end:1.1,panX:[0,0],panY:[0,0],vignette:.24};
+  const k=ease(clamp(t/Math.max(6,(kind.startsWith("final")?10:8)),0,1));
+  const zoom=lerp(p.start||1.03,p.end||1.1,k),panX=lerp((p.panX||[0,0])[0],(p.panX||[0,0])[1],k),panY=lerp((p.panY||[0,0])[0],(p.panY||[0,0])[1],k);
+  ctx.save();ctx.filter="saturate(1.04) contrast(1.03)";drawCoverImage(ctx,img,zoom,panX,panY);ctx.filter="none";
+  if(p.warm&&details?.success){ctx.fillStyle="rgba(236,190,122,.07)";ctx.fillRect(0,0,W,H);}
+  const shade=kind==="finalEpilogue"&&details?.success?"rgba(245,205,140,.08)":"rgba(7,9,16,.18)";ctx.fillStyle=gradient(ctx,0,0,0,H,[[0,"rgba(6,8,15,.14)"],[.72,shade],[1,"rgba(5,6,12,.38)"]]);ctx.fillRect(0,0,W,H);
+  if(p.rain)rain(ctx,t,p.rain);if(p.mist)mist(ctx,t);if(p.dust)atmosphereDust(ctx,t,p.dust);
+  if(kind==="clock"&&p.lightning){const flash=(t%7.7>2.9&&t%7.7<3.08)?1:0;if(flash){ctx.fillStyle="rgba(210,224,255,.24)";ctx.fillRect(0,0,W,H);glow(ctx,240,235,320,"#d8e5ff36");}}
+  if(kind==="discovery"){ctx.fillStyle=gradient(ctx,0,H*.54,0,H,[[0,"rgba(8,8,12,0)"],[1,"rgba(8,8,12,.28)"]]);ctx.fillRect(0,H*.54,W,H*.46);}
+  const v=Math.max(.08,p.vignette||.22);const vg=ctx.createRadialGradient(800,420,200,800,450,1040);vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,`rgba(0,0,0,${v})`);ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+  ctx.restore();return true;
+ }
  function rng(n){let x=Math.sin(n*17.771+49.81)*43758.5453;return x-Math.floor(x);}
  function poly(ctx,points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(...points[0]);for(const p of points.slice(1))ctx.lineTo(...p);ctx.closePath();ctx.fill();}
  function round(ctx,x,y,w,h,r,fill,stroke,lw=1){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}}
@@ -1979,7 +2032,8 @@ const Stage=(()=>{
  /* Final act is a film, not the same illustrated slide reused at the end.
     Each shot uses moving subjects, staged light, camera travel and progressive reveals. */
  function finaleCouncil(ctx,t){
-  parlor(ctx,Math.min(t,5),"manor");
+  const usedStill=drawStillScene(ctx,"manor","finalGathering",t);
+  if(!usedStill)parlor(ctx,Math.min(t,5),"manor");
   ctx.save();
   const dim=.30+.09*Math.sin(t*.9);ctx.fillStyle=`rgba(7,6,14,${dim})`;ctx.fillRect(0,0,W,H);
   // Push in on the sealed evidence across a long oak table.
@@ -1997,10 +2051,15 @@ const Stage=(()=>{
    glow(ctx,x,y,110,"#fbc98533");round(ctx,x-9,y,18,113,3,"#e0c29b");circle(ctx,x,y-5,12,"#ffc36b");}
  }
  function finaleRevelation(ctx,t,details){
-  ctx.fillStyle=gradient(ctx,0,0,0,H,[[0,"#16121c"],[.65,"#261a1c"],[1,"#0c0d15"]]);ctx.fillRect(0,0,W,H);
-  const x=800,y=525;ctx.fillStyle=radial(ctx,x,y,700,[[0,"#c3a16e50"],[1,"#00000000"]]);ctx.fillRect(0,0,W,H);
-  // A circular carved table with a moving overhead pool of lamplight.
-  ctx.save();ctx.translate(x,y+105);ctx.scale(1,.44);circle(ctx,0,0,680,"#4c3125");circle(ctx,0,0,650,"#9c754e");circle(ctx,0,0,620,"#3e281f");ctx.restore();
+  const x=800,y=525,usedStill=drawStillScene(ctx,"manor","finalReveal",t,details);
+  if(!usedStill){
+   ctx.fillStyle=gradient(ctx,0,0,0,H,[[0,"#16121c"],[.65,"#261a1c"],[1,"#0c0d15"]]);ctx.fillRect(0,0,W,H);
+   ctx.fillStyle=radial(ctx,x,y,700,[[0,"#c3a16e50"],[1,"#00000000"]]);ctx.fillRect(0,0,W,H);
+   // A circular carved table with a moving overhead pool of lamplight.
+   ctx.save();ctx.translate(x,y+105);ctx.scale(1,.44);circle(ctx,0,0,680,"#4c3125");circle(ctx,0,0,650,"#9c754e");circle(ctx,0,0,620,"#3e281f");ctx.restore();
+  }else{
+   ctx.fillStyle=radial(ctx,800,605,520,[[0,"rgba(255,225,170,.10)"],[1,"rgba(0,0,0,0)"]]);ctx.fillRect(0,0,W,H);
+  }
   const labels=["THE SUSPECT","THE METHOD","THE LOCATION"];
   const names=details?.solution||["SEALED","SEALED","SEALED"];
   // In portrait mode the original film would crop two of the three cards.
@@ -2048,16 +2107,21 @@ const Stage=(()=>{
  }
  function finaleEpilogue(ctx,t,details){
   const success=!!details?.success;
-  backdrop(ctx,t,"manor");
-  // Dawn brightens after conviction; an unsolved case fades to blue-black.
-  ctx.fillStyle=radial(ctx,1250,170,700,[[0,success?"#eebf7a70":"#7191b228"],[1,"#00000000"]]);ctx.fillRect(0,0,W,H);
-  const z=1+ease(t/13)*.18;ctx.save();ctx.translate(800,500);ctx.scale(z,z);ctx.translate(-800,-500);
-  poly(ctx,[[260,780],[330,290],[485,280],[610,210],[745,300],[1015,300],[1090,170],[1200,295],[1350,310],[1430,780]],"#0f1421");
-  round(ctx,353,328,940,440,0,"#202335","#bc95644d",6);
-  poly(ctx,[[275,332],[440,227],[1100,227],[1350,332]],"#101420");
-  round(ctx,748,565,154,204,74,"#080d18","#ad875a",6);
-  for(let i=0;i<6;i++){let x=443+i*145,y=423;round(ctx,x,y,55,110,25,success?"#d1a26c":"#55667a","#aa8555",4);glow(ctx,x+25,y+45,95,success?"#ffdd9e28":"#abc6ef0c");}
-  ctx.restore();mist(ctx,t);if(!success)rain(ctx,t,.46);
+  const usedStill=drawStillScene(ctx,"manor","finalEpilogue",t,details);
+  if(!usedStill){
+   backdrop(ctx,t,"manor");
+   // Dawn brightens after conviction; an unsolved case fades to blue-black.
+   ctx.fillStyle=radial(ctx,1250,170,700,[[0,success?"#eebf7a70":"#7191b228"],[1,"#00000000"]]);ctx.fillRect(0,0,W,H);
+   const z=1+ease(t/13)*.18;ctx.save();ctx.translate(800,500);ctx.scale(z,z);ctx.translate(-800,-500);
+   poly(ctx,[[260,780],[330,290],[485,280],[610,210],[745,300],[1015,300],[1090,170],[1200,295],[1350,310],[1430,780]],"#0f1421");
+   round(ctx,353,328,940,440,0,"#202335","#bc95644d",6);
+   poly(ctx,[[275,332],[440,227],[1100,227],[1350,332]],"#101420");
+   round(ctx,748,565,154,204,74,"#080d18","#ad875a",6);
+   for(let i=0;i<6;i++){let x=443+i*145,y=423;round(ctx,x,y,55,110,25,success?"#d1a26c":"#55667a","#aa8555",4);glow(ctx,x+25,y+45,95,success?"#ffdd9e28":"#abc6ef0c");}
+   ctx.restore();mist(ctx,t);if(!success)rain(ctx,t,.46);
+  }else if(!success){
+   ctx.fillStyle="rgba(10,16,26,.18)";ctx.fillRect(0,0,W,H);
+  }
   const portrait=details?.portraitImage;
   if(success&&portrait?.complete&&portrait.naturalWidth){
    const reveal=ease(clamp((t-2.5)/3,0,1));if(reveal){ctx.save();ctx.globalAlpha=reveal;const portraitMode=details?.portrait;
@@ -2073,19 +2137,20 @@ const Stage=(()=>{
  }
  function paint(ctx,theme,kind,t,details){
   ctx.save();ctx.clearRect(0,0,W,H);
+  const stillReady=/^final/.test(kind)?false:drawStillScene(ctx,theme,kind,t,details);
   if(kind==="arrival"){
-   if(theme==="train")train(ctx,t);else if(theme==="ball")masquerade(ctx,t);else if(theme==="island")lighthouse(ctx,t);else manor(ctx,t);
-  }else if(kind==="gathering")parlor(ctx,t,theme);
-  else if(kind==="clock")clock(ctx,t);
-  else if(kind==="discovery")corridor(ctx,t);
-  else if(kind==="evidence")evidence(ctx,t);
+   if(!stillReady){if(theme==="train")train(ctx,t);else if(theme==="ball")masquerade(ctx,t);else if(theme==="island")lighthouse(ctx,t);else manor(ctx,t);}
+  }else if(kind==="gathering"){if(!stillReady)parlor(ctx,t,theme);}
+  else if(kind==="clock"){if(!stillReady)clock(ctx,t);}
+  else if(kind==="discovery"){if(!stillReady)corridor(ctx,t);}
+  else if(kind==="evidence"){if(!stillReady)evidence(ctx,t);}
   else if(kind==="finalGathering")finaleCouncil(ctx,t);
   else if(kind==="finalReveal")finaleRevelation(ctx,t,details);
   else if(kind==="finalEpilogue")finaleEpilogue(ctx,t,details);
-  else if(kind==="ending")evidence(ctx,t);
-  else if(kind==="event")corridor(ctx,t);
-  else if(kind==="portrait")evidence(ctx,t);
-  else manor(ctx,t);
+  else if(kind==="ending"){if(!stillReady)evidence(ctx,t);}
+  else if(kind==="event"){if(!stillReady)corridor(ctx,t);}
+  else if(kind==="portrait"){if(!stillReady)evidence(ctx,t);}
+  else if(!stillReady)manor(ctx,t);
   // 2.39:1 film projection, grain, vignette, and rolling film-light artifacts.
   const vg=ctx.createRadialGradient(800,390,160,800,445,1040);vg.addColorStop(0,"#00000000");vg.addColorStop(1,"#000000bb");ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
   for(let i=0;i<90;i++){let x=rng(i*3+17+t*.01)*W,y=rng(i*5+29)*H;ctx.fillStyle="rgba(248,224,187,.04)";ctx.fillRect(x,y,1.3,1.3);}
@@ -2117,6 +2182,7 @@ const Stage=(()=>{
   if(details?.success&&/^[a-z]+$/.test(details.character||"")){
    portraitImage=new Image();portraitImage.src=`/assets/detectives/${details.character}.webp`;
   }
+  const stillSrc=stillPath(theme,scene);if(stillSrc)ensureStill(stillSrc);
   function resize(){const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight,dpr=Math.min(devicePixelRatio||1,1.7);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
   resize();if(typeof ResizeObserver!=="undefined"){obj.observer=new ResizeObserver(resize);obj.observer.observe(canvas);}else window.addEventListener("resize",resize,{once:true});
   const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -2375,7 +2441,7 @@ function renderCinematic(){
   // The film has a minimum visual beat, but NEVER cuts off a speaking narrator.
   const voiceBusy=o.voiceOn&&(o.voiceState==="speaking"||o.voiceState==="starting");
   const fraction=Math.min(voiceBusy ? .97 : 1,elapsed/duration);
-  if(fill){fill.style.width=String(Math.max(0,Math.min(1,fraction))*100)+"%";fill.setAttribute("aria-valuenow",String(Math.round(Math.max(0,Math.min(1,fraction))*100)));}
+  if(fill){fill.style.width=`${Math.max(0,Math.min(1,fraction))*100}%`;fill.setAttribute("aria-valuenow",String(Math.round(Math.max(0,Math.min(1,fraction))*100)));}
   // Some Web Speech engines fail to emit start/error. Do not freeze the film.
   if(o.voiceOn&&o.voiceState==="starting"&&performance.now()-o.speechStartedAt>4500&&!(speechSynthesis?.speaking)){
    o.voiceState="blocked";cineUpdateVoice(o);

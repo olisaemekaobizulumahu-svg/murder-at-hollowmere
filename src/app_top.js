@@ -40,6 +40,9 @@ function detectivePortrait(d,css="",extra=""){
   const character=d||DETECTIVES[0];
   return `<img class="detective-portrait ${css}" src="${character.portrait}?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of ${esc(character.name)}" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
 }
+function butlerPortrait(css="",extra=""){
+  return `<img class="detective-portrait ${css} seat-butler-portrait" src="assets/detectives/fennimore.webp?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of Fennimore the butler" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
+}
 function detectiveIdentityHTML(g){
   const u=ME(),player=g&&g.players&&g.players[u];
   if(!player)return "";
@@ -559,9 +562,9 @@ function seatsHTML(g){
     }else if(g.winner===u){cls+=" turn";st="Solved it";}
     const on=isB||bot?null:online(u);
     const dot=on===null?"":`<span class="dot ${on?"":"off"}" title="${on?"Here now":"Not here right now"}"></span>`;
-    const label=isB?"Fennimore (butler)":nick(u,g)+(u===ME()?" (you)":"");
-    const sub=bot?"Computer · ":isLocal(g,u)?`On ${shortNick(nick(g.players[u].local,g))}'s device · `:"";
-    const portrait=isB?`<span class="seat-portrait seat-butler" aria-hidden="true">🗝️</span>`:detectivePortrait(DETECTIVE_BY_ID[g.players[u]?.character]||DETECTIVES[0],"seat-portrait");
+    const label=isB?"Fennimore the Butler":nick(u,g)+(u===ME()?" (you)":"");
+    const sub=isB?"House helper · ":bot?"Computer · ":isLocal(g,u)?`On ${shortNick(nick(g.players[u].local,g))}'s device · `:"";
+    const portrait=isB?butlerPortrait("seat-portrait"):detectivePortrait(DETECTIVE_BY_ID[g.players[u]?.character]||DETECTIVES[0],"seat-portrait");
     return `<li class="seat${cls}" style="--c:${colorOf(u,g)}"><span class="sw"></span>${portrait}<span class="sn">${esc(label)}${dot}</span><span class="ss">${esc(sub+st)}</span></li>`;
   }).join("");
 }

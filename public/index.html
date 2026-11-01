@@ -564,6 +564,7 @@ img,svg{max-width:100%}
 .seat .sw{grid-column:1;grid-row:1/3}
 .seat .seat-portrait{grid-column:2;grid-row:1/3;width:34px;height:43px;border-radius:5px}
 .seat .seat-butler{display:grid;place-items:center;font-size:1.3rem;background:var(--brass-soft)}
+.seat-butler-portrait{background:#261f1d;object-position:center 26%}
 .seat .sn,.seat .ss{grid-column:3;min-width:0}
 
 /* v1.4.3: release indicator and reliable update visibility. */
@@ -586,6 +587,84 @@ img,svg{max-width:100%}
 @media(max-width:700px){.cine-reel.is-reveal .cine-copy{top:clamp(46px,9vh,75px);bottom:auto;max-width:calc(100vw - 28px);padding:5px 9px;background:#050611a6}.cine-reel.is-reveal .cine-copy h2{font-size:clamp(1.2rem,5vw,1.55rem)!important;margin-bottom:2px}.cine-reel.is-reveal .cine-copy #cineSubtitle{font-size:.78rem;line-height:1.08}}
 /* Keep the mobile evidence captions above the stack of turning cards. */
 @media(max-width:700px){.cine-reel.is-reveal .cine-copy{top:45px;bottom:auto;min-height:0;padding:4px 8px;background:#050611b6}.cine-reel.is-reveal .cine-copy h2{font-size:clamp(1.08rem,4.5vw,1.45rem)!important;margin:0}.cine-reel.is-reveal .cine-copy #cineSubtitle{display:none}}
+
+
+/* v1.5.1: cinematic estate background across the actual site, not only the intro film.
+   The light parchment panels remain legible; page chrome sits on a dark, illustrated backdrop. */
+html{background:#0c1019}
+body{
+  min-height:100vh;
+  background-color:#0b111b;
+  background-image:
+   linear-gradient(180deg,rgba(6,8,16,.79) 0%,rgba(8,11,20,.75) 28%,rgba(8,11,18,.86) 100%),
+   linear-gradient(100deg,rgba(5,8,14,.38),transparent 55%,rgba(5,8,14,.36)),
+   url('assets/cinematics/hollowmere-background.webp');
+  background-position:center,center,center top;
+  background-size:cover,cover,cover;
+  background-repeat:no-repeat;
+  background-attachment:fixed,fixed,fixed;
+}
+body::before{background:#0b1019}
+#home .hero-copy{
+  padding:clamp(18px,2.5vw,28px);
+  border:1px solid rgba(218,178,111,.48);
+  border-radius:14px;
+  background:linear-gradient(120deg,rgba(12,16,26,.92),rgba(23,22,32,.88));
+  box-shadow:0 14px 38px rgba(0,0,0,.32);
+  color:#f1e4d0;
+  backdrop-filter:blur(8px);
+}
+#home .hero-copy .sub{color:#d1c3b3}
+#home .section-h{color:#f7e0b1;text-shadow:0 3px 16px rgba(0,0,0,.8)}
+#home .cast-grp h3{color:#e6c38d}
+#home .cast-item{
+  background:rgba(16,18,29,.88);
+  padding:11px 13px;
+  border:1px solid rgba(190,151,94,.38);
+  border-radius:9px;
+  backdrop-filter:blur(7px);
+}
+#home .cast-item b{color:#f5e6d0}
+#home .cast-item p{color:#cfbfab}
+#home .hero-join{
+  background:rgba(19,20,31,.94);
+  border:1px solid rgba(228,184,113,.66);
+  box-shadow:0 12px 38px rgba(0,0,0,.52);
+  color:#f3e6d3;
+}
+#home .hero-join input{background:#f7efdf;color:#2b2022;border-color:#bc9c6b}
+#home .hero-join label{color:#f4e3c8}
+#home .hero-join .link{color:#f5d59b}
+#home .hero-join .btn:not(.primary){background:#e9d6b8;color:#2b2020;border-color:#c4a06b}
+#home .hero-join .btn.primary{background:#af792e;color:#fff7e5;border-color:#e0b36b}
+#home .hero-join .msg{color:#dbcbb8}
+#table .bar{
+  background:linear-gradient(100deg,rgba(13,15,26,.94),rgba(24,21,33,.86));
+  color:#f1e0be;
+  border:1px solid rgba(202,157,96,.46);
+  border-radius:12px;
+  padding:12px 14px;
+  box-shadow:0 12px 26px rgba(0,0,0,.28);
+}
+#table .bar .link{color:#f4dcb2}
+#table .bar .bar-name{color:#faebd1}
+#table .bar .bar-case{color:#f0c67b}
+#table .bar .icon-btn{background:#252337;color:#f4e1bb;border-color:#9f815a}
+#table .bar .build-stamp{background:#302738;border-color:#ad8e5f;color:#f3d6a3}
+#table .stage{box-shadow:0 13px 36px rgba(0,0,0,.42)}
+#table .tbl > :is(#panel,#hand,#nb,#log,#rulesT,.opening,.character-picker,.dossier-progress){min-width:0}
+/* Preserve the readability of the investigation pages and their cards. */
+#table .panel,#home .story-intro,#home .rule,#home .detective-card{
+  box-shadow:0 11px 32px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.18);
+}
+@media(max-width:700px){
+ body{background-attachment:scroll,scroll,scroll;background-position:center,center,center top;background-size:cover,cover,auto 100vh}
+ #table .bar{padding:11px;gap:7px}
+ #home .hero-copy{padding:17px}
+}
+@media(prefers-reduced-transparency:reduce){
+ #home .hero-join,#home .hero-copy,#table .bar,#home .cast-item{backdrop-filter:none}
+}
 </style>
 </head>
 <body>
@@ -597,7 +676,7 @@ img,svg{max-width:100%}
         <div class="title3d">
           <p class="eyebrow">A family mystery for 2 to 8 detectives</p>
           <h1>Murder at <em>Hollowmere</em></h1>
-          <span class="build-stamp" title="Release 1.4.5: automatic scene-synced narration" aria-label="Game version 1.4.5">v1.4.5 · portraits</span>
+          <span class="build-stamp" title="Release 1.5.1: illustrated cinematic scenes and automatic scene-synced narration" aria-label="Game version 1.5.1">v1.5.1 · portraits · illustrated cinematics</span>
         </div>
         <section class="hero-join" aria-labelledby="joinH">
           <h2 id="joinH" class="sr-only">Take your seat</h2>
@@ -636,7 +715,7 @@ img,svg{max-width:100%}
   <section id="table" class="view" hidden>
     <header class="bar">
       <button class="link" type="button" data-act="home">← Back to the hall</button>
-      <span class="build-stamp" title="Release 1.4.5: automatic scene-synced narration" aria-label="Game version 1.4.5">v1.4.5 · portraits</span>
+      <span class="build-stamp" title="Release 1.5.1: illustrated cinematic scenes and automatic scene-synced narration" aria-label="Game version 1.5.1">v1.5.1 · portraits · illustrated cinematics</span>
       <div class="bar-title"><span class="bar-name">Murder at Hollowmere</span><span class="bar-case" id="caseNo"></span>
         <button class="icon-btn set-open" type="button" data-act="settings" aria-label="Settings" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
       </div>
@@ -671,8 +750,8 @@ img,svg{max-width:100%}
 <div id="sr" class="sr-only" aria-live="polite"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="cinematic" hidden></div>
-<script src="rules.js?v=1.4.5"></script>
-<script src="cases.js?v=1.4.5"></script>
-<script src="app.js?v=1.4.5"></script>
+<script src="rules.js?v=1.5.1"></script>
+<script src="cases.js?v=1.5.1"></script>
+<script src="app.js?v=1.5.1"></script>
 </body>
 </html>

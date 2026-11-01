@@ -95,6 +95,12 @@ The opening and ending are rendered as animated canvas scenes rather than static
 
 The existing Render URL stays the same when this commit is deployed to the original Render service. Confirm `https://hollowmere-kfcm.onrender.com/version` returns `1.4.4` before judging the changes; old rooms and cached tabs may still show earlier UI until refreshed.
 
-## Version 1.4.5 — Automatic scene-synchronized narration
+## Version 1.4.5 — Automatic narration with scene synchronization
 
-The cinematic voice starts automatically when each scene appears, and the film waits for the spoken line to finish before advancing. The Narrate button is removed; voice is on by default with an optional Mute control. Ordinary game interactions unlock the browser speech engine before the game starts. Browser autoplay restrictions may still prevent sound until a gesture occurs; captions continue automatically. The existing Render URL is unchanged. Verify /version reports 1.4.5 before testing.
+The **Narrate** action is removed. Each cinematic act starts its spoken narration by default at scene entry; the film waits until that spoken line finishes before advancing. A normal Start/Join/Deal interaction primes the browser's speech feature, so there is no separate narration setup step. The optional **Mute voice** button is for users who prefer silent captions. Pausing the film pauses speech; restarting resumes it. If a browser prohibits audio autoplay, captions and animated scenes continue, and the next ordinary interaction can unlock speech. See `qa/VOICE_SYNCHRONIZATION_QA.md`.
+
+Your original Render game URL is unchanged. New code must be deployed to the existing Render service and `/version` should return `1.4.5` before trying the change.
+
+## v1.5.1 environment art
+
+The main site and detective lobby now use bundled moonlit-manor artwork behind legible panels; cinematic scenes are bundled as compressed WebP images with automatic narration. The 3D manor and game rules are unchanged.
