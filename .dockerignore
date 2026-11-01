@@ -1,0 +1,9 @@
+data
+node_modules
+src
+build.py
+.git
+.env
+.env.*
+__pycache__/
+.github/

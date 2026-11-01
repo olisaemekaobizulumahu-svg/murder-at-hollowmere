@@ -1,0 +1,13 @@
+# One free web service on Render. Push this folder to a public GitHub repository, then use
+# https://render.com/deploy?repo=<your repository URL>  (or New > Blueprint in the Render dashboard).
+services:
+  - type: web
+    name: hollowmere
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
