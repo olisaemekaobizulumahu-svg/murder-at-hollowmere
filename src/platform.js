@@ -107,11 +107,15 @@ function cinematic(type,g,discovery){
    {eyebrow:"ACT V · THE INVESTIGATION",title:"A sealed truth",text:detective?`${detective.name} arrives to investigate. ${detective.title}. Your task: discover who, how and where.`:"The evidence is sealed. Every detective holds only part of the truth. The investigation begins.",kind:"evidence",duration:8}
   ];
  }else if(type==="ending"){
+  const success=!!g.winner, champion=success?(g.players?.[g.winner]?.nick||"A detective"):null;
+  const solved=(g.solution||[]).map(id=>CARD[id]?.name||id);
+  const finale=success?`${champion} has solved the case. The family finally hears the truth.`:"Every accusation has failed. The murderer escapes; the best detective is honoured for their investigation.";
   scenes=[
-   {eyebrow:"THE FINAL ACT",title:g.winner?"The truth is spoken":"The case remains unsolved",text:c.ending||"The last witness finishes speaking.",kind:"clock",duration:6},
-   {eyebrow:"THE REVELATION",title:g.winner?"Case closed":"Best Detective",text:g.winner?`${g.players[g.winner]?.nick||"A detective"} uncovered the truth. The sealed evidence is now released.`:"The murderer escapes conviction. The best investigator is recognised for their deductions.",kind:"discovery",duration:6},
-   {eyebrow:"THE SEALED EVIDENCE",title:(g.solution||[]).map(id=>CARD[id]?.name||id).join(" · ")||"The final evidence",text:"The suspect, method and scene are revealed to every detective. The case has ended.",kind:"ending",duration:8}
+   {eyebrow:"FINAL ACT · THE LAST GATHERING",title:"The last witness",text:"At last, the investigators return to the candlelit hall. One final statement will decide the fate of the family.",kind:"finalGathering",duration:12},
+   {eyebrow:"FINAL ACT · THE REVELATION",title:"The evidence is revealed",text:"Three sealed cards turn over: the murderer, the method, and the scene of the crime.",kind:"finalReveal",duration:13},
+   {eyebrow:"EPILOGUE · THE VERDICT",title:success?"The case is closed":"The case remains unsolved",text:finale,kind:"finalEpilogue",duration:13}
   ];
+  PLATFORM.finalTruth={solution:solved,winner:champion,success,character:g.players?.[g.winner]?.character||null};
  }else if(type==="event"){
   const entries={footsteps:{title:"Footsteps in the passage",text:"Someone crosses the hallway without a candle. The noise reveals no culprit; the evidence remains sealed."},letter:{title:"The missing letter",text:"An unsigned note is found. The words are unsettling, but only confirmed card evidence establishes the truth."},midnight:{title:"A bell without a witness",text:"A distant bell rings and a door closes. No alibi is safe from careful questioning."}};
   const e=entries[discovery?.scene]||entries.footsteps;
@@ -119,61 +123,114 @@ function cinematic(type,g,discovery){
  }else scenes=[{eyebrow:"PRIVATE DISCOVERY",title:"A new thread emerges",text:"A card has been shown to you alone. Record the evidence in your notebook.",kind:"evidence",duration:6}];
  if(PLATFORM.cineTicker)clearInterval(PLATFORM.cineTicker);
  window.HollowmereCinema?.stop();
- PLATFORM.cine={type,theme,scenes,index:0,elapsed:0,soundOn:false,started:performance.now(),paused:!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches};
+ // Voice is requested automatically. Browser autoplay policies may require the user to
+ // tap Enable narration once; captions and the film still play without voice permission.
+ const narrationSupported=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance);
+ PLATFORM.cine={type,theme,scenes,index:0,elapsed:0,soundOn:false,
+  voiceOn:narrationSupported,voiceState:narrationSupported?"starting":"unavailable",
+  speech:null,speechStartedAt:0,started:performance.now(),paused:false,
+  details:type==="ending"?PLATFORM.finalTruth:null};
  renderCinematic();
 }
 function cinematicElapsed(o){return o.elapsed+(o.paused?0:(performance.now()-o.started)/1000);}
+function cinematicDuration(o,scene){
+ // Give the default narrator enough time to finish a readable passage.
+ const words=(scene.title+" "+scene.text).split(/\s+/).length;
+ return Math.max(scene.duration||9,Math.ceil(words/2.4)+2);
+}
+function cineSpeechStop(){
+ if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}
+}
+function cinematicNarrate(o,retry=false){
+ if(!o?.voiceOn||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
+ cineSpeechStop();
+ const i=o.index,sc=o.scenes[i];o.voiceState="starting";o.speechStartedAt=performance.now();
+ try{
+  const u=new SpeechSynthesisUtterance(sc.title+". "+sc.text);
+  u.lang="en-GB";u.rate=.92;u.pitch=.82;u.volume=1;
+  const voices=speechSynthesis.getVoices?.()||[];
+  const preferred=voices.find(v=>/^en-GB/i.test(v.lang)&&v.localService)||voices.find(v=>/^en-GB/i.test(v.lang))||voices.find(v=>/^en/i.test(v.lang));
+  if(preferred)u.voice=preferred;
+  u.onstart=()=>{if(PLATFORM.cine===o&&o.index===i){o.voiceState="speaking";cineUpdateVoice(o);}};
+  u.onend=()=>{if(PLATFORM.cine===o&&o.index===i){o.voiceState="finished";cineUpdateVoice(o);}};
+  u.onerror=()=>{if(PLATFORM.cine===o&&o.index===i){o.voiceState="blocked";cineUpdateVoice(o);}};
+  o.speech=u;
+  speechSynthesis.speak(u);
+  cineUpdateVoice(o);
+ }catch(e){o.voiceState="blocked";cineUpdateVoice(o);}
+}
+function cineUpdateVoice(o){
+ if(PLATFORM.cine!==o)return;
+ const b=$("#cinematic [data-cine=narrate]");
+ const status=$("#cinematic .cine-voice-status");
+ if(!b)return;
+ b.textContent=!o.voiceOn?"Enable narration":o.voiceState==="blocked"?"Enable narration":o.voiceState==="speaking"?"Narration on · mute":"Narration on · mute";
+ b.setAttribute("aria-pressed",String(o.voiceOn));
+ if(status)status.textContent=!o.voiceOn?"Captions only":o.voiceState==="speaking"?"Narrating automatically":o.voiceState==="blocked"?"Audio blocked by browser — tap Enable narration":o.voiceState==="unavailable"?"Captions only":"Narration starts automatically";
+}
 function cinematicEnd(){
  const finished=PLATFORM.cine;
  if(finished?.type==="opening"&&S.game?.status==="playing"&&S.game.players?.[S.uid])api("cineReady").catch(()=>{});
  if(PLATFORM.cineTicker){clearInterval(PLATFORM.cineTicker);PLATFORM.cineTicker=null;}
  window.HollowmereCinema?.stop();window.HollowmereCinema?.sound(false);
- if("speechSynthesis" in window)speechSynthesis.cancel();
- PLATFORM.cine=null;renderCinematic();
+ cineSpeechStop();PLATFORM.cine=null;renderCinematic();
 }
 function renderCinematic(){
  const el=$("#cinematic");if(!el)return;
  if(PLATFORM.cineTicker){clearInterval(PLATFORM.cineTicker);PLATFORM.cineTicker=null;}
  if(!PLATFORM.cine){el.hidden=true;el.innerHTML="";document.body.classList.remove("cinematic-open");return;}
- const o=PLATFORM.cine,sc=o.scenes[o.index];
- o.started=performance.now();
+ const o=PLATFORM.cine,sc=o.scenes[o.index];o.started=performance.now();
  const nr=o.index+1,total=o.scenes.length;
  el.hidden=false;document.body.classList.add("cinematic-open");
- el.innerHTML=`<section class="cine-reel" role="dialog" aria-modal="true" aria-labelledby="cineTitle" aria-describedby="cineSubtitle">
-  <canvas class="cine-canvas" aria-label="Animated story: ${esc(sc.title)}"></canvas>
+ // Film-first layout: the canvas is the scene, and dialogue is a restrained subtitle.
+ el.innerHTML=`<section class="cine-reel ${sc.kind==="finalReveal"?"is-reveal":""}" role="dialog" aria-modal="true" aria-labelledby="cineTitle" aria-describedby="cineSubtitle">
+  <canvas class="cine-canvas" aria-label="Animated ${esc(sc.kind)} scene"></canvas>
   <div class="cine-grade" aria-hidden="true"></div><div class="cine-letterbox top" aria-hidden="true"></div><div class="cine-letterbox bottom" aria-hidden="true"></div>
-  <div class="cine-topline"><span>MURDER AT HOLLOWMERE</span><span>SCENE ${String(nr).padStart(2,"0")} / ${String(total).padStart(2,"0")}</span></div>
-  <div class="cine-copy" aria-live="polite"><p class="cine-act">${esc(sc.eyebrow)}</p><h2 id="cineTitle">${esc(sc.title)}</h2><p id="cineSubtitle">${esc(sc.text)}</p></div>
+  <div class="cine-topline"><span>MURDER AT HOLLOWMERE</span><span>${String(nr).padStart(2,"0")} / ${String(total).padStart(2,"0")} · ${esc(sc.eyebrow)}</span></div>
+  <div class="cine-copy" aria-live="off"><h2 id="cineTitle">${esc(sc.title)}</h2><p id="cineSubtitle">${esc(sc.text)}</p></div>
   <div class="cine-toolbar"><div class="cine-time"><span class="cine-time-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></div>
-  <div class="cine-controls"><span class="cine-runtime">${nr} of ${total} scenes</span><button type="button" class="btn sm ghost" data-cine="skip">Skip film</button>
+  <div class="cine-controls"><span class="cine-runtime">${nr}/${total} · <span class="cine-voice-status">Narration starts automatically</span></span>
+  <button type="button" class="btn sm ghost" data-cine="skip">Skip film</button>
   <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}">${o.paused?"▶ Play":"Ⅱ Pause"}</button>
-  ${window.AudioContext||window.webkitAudioContext?`<button type="button" class="btn sm ghost" data-cine="sound" aria-pressed="${!!o.soundOn}">${o.soundOn?"♪ Sound on":"♪ Sound off"}</button>`:""}
-  ${"speechSynthesis" in window?`<button type="button" class="btn sm ghost" data-cine="narrate">Narrate</button>`:""}
-  <button type="button" class="btn sm primary" data-cine="next">${nr===total?"Enter the investigation":"Next scene →"}</button></div></div>
+  ${window.AudioContext||window.webkitAudioContext?`<button type="button" class="btn sm ghost" data-cine="sound" aria-pressed="${!!o.soundOn}">${o.soundOn?"♪ Atmosphere on":"♪ Atmosphere off"}</button>`:""}
+  ${window.speechSynthesis?`<button type="button" class="btn sm ghost" data-cine="narrate" aria-pressed="${o.voiceOn}">${o.voiceOn?"Narration on · mute":"Enable narration"}</button>`:""}
+  <button type="button" class="btn sm primary" data-cine="next">${nr===total?"Finish film":"Next scene →"}</button></div></div>
  </section>`;
  const canvas=el.querySelector("canvas");
- window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o));
- const fill=el.querySelector(".cine-time-fill");
+ window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o),o.details);
+ cinematicNarrate(o);
+ const fill=el.querySelector(".cine-time-fill"),duration=cinematicDuration(o,sc);
  PLATFORM.cineTicker=setInterval(()=>{
   if(PLATFORM.cine!==o)return;
-  const fraction=Math.min(1,cinematicElapsed(o)/sc.duration);
+  const elapsed=cinematicElapsed(o),fraction=Math.min(1,elapsed/duration);
   if(fill){fill.style.width=`${fraction*100}%`;fill.setAttribute("aria-valuenow",String(Math.round(fraction*100)));}
-  if(fraction>=1&&!o.paused)cineAction("next");
+  // A blocked speech engine should be discoverable, not silently look enabled.
+  if(o.voiceOn&&o.voiceState==="starting"&&performance.now()-o.speechStartedAt>2200&&!(speechSynthesis?.speaking)){
+   o.voiceState="blocked";cineUpdateVoice(o);
+  }
+  const narratorBusy=o.voiceOn&&o.voiceState==="speaking";
+  if(fraction>=1&&!o.paused&&(!narratorBusy||elapsed>duration+10))cineAction("next");
  },100);
 }
 function cineAction(a){const o=PLATFORM.cine;if(!o)return;
  if(a==="narrate"){
-  if("speechSynthesis" in window){speechSynthesis.cancel();const sc=o.scenes[o.index],u=new SpeechSynthesisUtterance(sc.title+". "+sc.text);u.rate=.86;u.pitch=.83;speechSynthesis.speak(u);}return;
+  if(!o.voiceOn||o.voiceState==="blocked"){
+   o.voiceOn=true;o.voiceState="starting";cinematicNarrate(o,true);
+  }else{o.voiceOn=false;o.voiceState="muted";cineSpeechStop();cineUpdateVoice(o);}
+  return;
  }
- if(a==="sound"){o.soundOn=!o.soundOn;o.soundOn=window.HollowmereCinema?.sound(o.soundOn)===true;const b=$("#cinematic [data-cine=sound]");if(b){b.textContent=o.soundOn?"♪ Sound on":"♪ Sound off";b.setAttribute("aria-pressed",String(o.soundOn));}return;}
+ if(a==="sound"){
+  o.soundOn=!o.soundOn;o.soundOn=window.HollowmereCinema?.sound(o.soundOn)===true;
+  const b=$("#cinematic [data-cine=sound]");if(b){b.textContent=o.soundOn?"♪ Atmosphere on":"♪ Atmosphere off";b.setAttribute("aria-pressed",String(o.soundOn));}return;
+ }
  if(a==="pause"){
   o.elapsed=cinematicElapsed(o);o.paused=!o.paused;o.started=performance.now();
+  if(o.voiceState==="speaking"&&window.speechSynthesis){try{o.paused?speechSynthesis.pause():speechSynthesis.resume();}catch(e){}}
   const b=$("#cinematic [data-cine=pause]");if(b){b.textContent=o.paused?"▶ Play":"Ⅱ Pause";b.setAttribute("aria-pressed",String(o.paused));}return;
  }
- if("speechSynthesis" in window)speechSynthesis.cancel();
+ cineSpeechStop();
  if(a==="skip")return cinematicEnd();
- o.index++;
- if(o.index>=o.scenes.length)return cinematicEnd();
+ o.index++;if(o.index>=o.scenes.length)return cinematicEnd();
  o.elapsed=0;o.started=performance.now();renderCinematic();
 }
 async function voiceJoin(){if(!S.game?.settings?.voice||!S.game.players[S.uid])return;

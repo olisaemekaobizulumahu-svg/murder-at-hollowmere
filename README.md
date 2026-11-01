@@ -88,3 +88,9 @@ Eight original local WebP detective portraits are included in `public/assets/det
 The game link **does not change**. Version stamps are visible on the home and table screens. The server exposes `GET /version` with the exact deployed version (e.g. `1.4.3`). The main HTML and JavaScript assets now require revalidation on page load, and script/portrait URLs contain the release version so old cached files cannot silently hide the latest artwork. Portraits should be visible in the player strip after updating.
 
 **Render deployment:** A GitHub CI pass does not mean Render has deployed. Ensure the Render web service deploys the latest `main` commit; verify `https://hollowmere-kfcm.onrender.com/version` reports `1.4.3` before testing portraits. After deployment, reload the game tab or open an incognito tab. Existing rooms and previous away/out-of-running states are not automatically reset; start a new room to test.
+
+### Cinematic & narration update (v1.4.4)
+
+The opening and ending are rendered as animated canvas scenes rather than static text slides. The ending now depicts a final gathering, a staged three-card revelation, and a final verdict; portrait-sized screens show all three cards. Browser speech synthesis is requested **automatically at each scene start**, while captions remain available. Browsers that block automatic speech require one tap on **Enable narration** (the page cannot override browser autoplay restrictions). Pause, Skip, and replay controls remain available. See `qa/AUTOMATIC_NARRATION_CINEMATIC_QA.md`.
+
+The existing Render URL stays the same when this commit is deployed to the original Render service. Confirm `https://hollowmere-kfcm.onrender.com/version` returns `1.4.4` before judging the changes; old rooms and cached tabs may still show earlier UI until refreshed.

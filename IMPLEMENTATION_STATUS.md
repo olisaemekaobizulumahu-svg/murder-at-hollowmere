@@ -56,3 +56,11 @@ Keep `data/` outside Git and never commit `.env`, password hashes or production 
 - Stopped cascading turn skips if everyone is offline or away.
 - Preserved turn deadlines during pauses and recovery from cold Render restarts.
 - Logged explicit skip causes and added regression tests for reconnect, timing and away/idle behavior.
+
+### v1.4.4 cinematic and automatic narration patch
+
+- Added scene-entry auto-narration with system speech voices, pause/resume and cancellation, browser-autoplay fallback, and compact captions.
+- Added three new animated finale shots with staged evidence cards and postgame-only solution data, plus a winner portrait shot when available.
+- On portrait mobile screens, all three revealed cards are displayed together, instead of being cropped to one central card.
+- Retained the existing 3D manor, detective portrait assets, room codes, multiplayer game engine and turn-stability guard.
+- The animation is procedural canvas art, not prerecorded 3D-character footage; narration voice quality and true hands-free playback depend on the player's browser and system policy.
