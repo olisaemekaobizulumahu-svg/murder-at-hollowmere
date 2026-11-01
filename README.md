@@ -82,3 +82,9 @@ For developers, the API requires the per-device `pid` and `key` and must be acce
 ## Version 1.4.2 — Detective portraits
 
 Eight original local WebP detective portraits are included in `public/assets/detectives/`. The home roster, lobby seat indicators, visual character picker, active investigator panel and case-winning screen now use the chosen image. The 3D board retains its original stylized pieces, and gameplay is unchanged. See `qa/CHARACTER_PORTRAIT_QA.md` for verification.
+
+## Release v1.4.3 — Display/update diagnostics
+
+The game link **does not change**. Version stamps are visible on the home and table screens. The server exposes `GET /version` with the exact deployed version (e.g. `1.4.3`). The main HTML and JavaScript assets now require revalidation on page load, and script/portrait URLs contain the release version so old cached files cannot silently hide the latest artwork. Portraits should be visible in the player strip after updating.
+
+**Render deployment:** A GitHub CI pass does not mean Render has deployed. Ensure the Render web service deploys the latest `main` commit; verify `https://hollowmere-kfcm.onrender.com/version` reports `1.4.3` before testing portraits. After deployment, reload the game tab or open an incognito tab. Existing rooms and previous away/out-of-running states are not automatically reset; start a new room to test.

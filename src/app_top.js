@@ -38,7 +38,7 @@ const cleanNick=v=>[...String(v||"").replace(/\s+/g," ").trim()].slice(0,16).joi
 /* Portraits are bundled original game assets; URLs are from fixed character metadata. */
 function detectivePortrait(d,css="",extra=""){
   const character=d||DETECTIVES[0];
-  return `<img class="detective-portrait ${css}" src="${character.portrait}" alt="Portrait of ${esc(character.name)}" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
+  return `<img class="detective-portrait ${css}" src="${character.portrait}?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of ${esc(character.name)}" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
 }
 function detectiveIdentityHTML(g){
   const u=ME(),player=g&&g.players&&g.players[u];

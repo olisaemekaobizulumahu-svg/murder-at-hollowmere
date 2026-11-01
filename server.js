@@ -13,6 +13,7 @@ const HM=require("./public/rules.js");
 const CASES=require("./public/cases.js");
 const {SUSPECTS,METHODS,ROOMS,DETECTIVES,DETECTIVE_BY_ID,OPENINGS,CARD,ALL,MAX_SEATS,holdersOf,nextTurn,queueFor,actor,matches,seated,validTrio}=HM;
 
+const RELEASE=require("./package.json").version;
 const ENV=process.env;
 const PORT=Number(ENV.PORT)||8080;
 const HOST=ENV.HOST||"0.0.0.0";
@@ -1014,7 +1015,7 @@ const SECURITY={
 function serveFile(req,res,name){
   const f=files.get(name);
   if(!f){res.writeHead(404,{"Content-Type":"text/plain",...SECURITY});res.end("Not found");return;}
-  const h={"Content-Type":f.type,"ETag":f.etag,"Cache-Control":name==="/index.html"?"no-cache":"public, max-age=3600","Vary":"Accept-Encoding",...SECURITY};
+  const h={"Content-Type":f.type,"ETag":f.etag,"Cache-Control":/[.]html$|[.]js$|[.]css$/.test(name)?"no-cache, must-revalidate":"public, max-age=3600","Vary":"Accept-Encoding",...SECURITY};
   if(req.headers["if-none-match"]===f.etag){res.writeHead(304,h);res.end();return;}
   const gz=f.gz&&/\bgzip\b/.test(req.headers["accept-encoding"]||"");
   if(gz)h["Content-Encoding"]="gzip";
@@ -1093,6 +1094,7 @@ const server=http.createServer((req,res)=>{
   if(req.method==="POST"&&u.pathname==="/api/stream")return void handleStream(req,res).catch(e=>{console.error(e);try{json(res,500,{ok:false,error:"Server error."});}catch(_){}});
   if(req.method!=="GET"&&req.method!=="HEAD"){res.writeHead(405,{"Allow":"GET, HEAD, POST"});res.end();return;}
   if(u.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"text/plain","Cache-Control":"no-store"});res.end("ok");return;}
+  if(u.pathname==="/version")return json(res,200,{game:"Murder at Hollowmere",version:RELEASE,portraits:8,commit:"GitHub main branch"});
   if(u.pathname==="/"||u.pathname==="/index.html")return serveFile(req,res,"/index.html");
   if(files.has(u.pathname))return serveFile(req,res,u.pathname);
   res.writeHead(404,{"Content-Type":"text/plain; charset=utf-8",...SECURITY});res.end("Not found");

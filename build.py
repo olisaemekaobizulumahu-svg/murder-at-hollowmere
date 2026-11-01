@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Assembles public/index.html and public/app.js from src/. Run after editing anything in src/."""
-import os
+import os, json
 here=os.path.dirname(os.path.abspath(__file__))
 rd=lambda p:open(os.path.join(here,'src',p),encoding='utf-8').read()
+VERSION=json.load(open(os.path.join(here,'package.json'),encoding='utf-8'))['version']
 css=rd('style.css')+rd('extra.css')
 head='''<!doctype html>
 <html lang="en">
@@ -20,8 +21,9 @@ head='''<!doctype html>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Courier+Prime:wght@400;700&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
 <style>
 '''
-html=head+css+'</style>\n</head>\n<body>\n'+rd('body.html')+'<script src="rules.js"></script>\n<script src="cases.js"></script>\n<script src="app.js"></script>\n</body>\n</html>\n'
-js=rd('app_top.js')+'\n'+rd('stage.js')+'\n'+rd('cinema.js')+'\n'+rd('platform.js')+'\n'+rd('app_bottom.js')
+html=head+css+'</style>\n</head>\n<body>\n'+rd('body.html')+f'<script src="rules.js?v={VERSION}"></script>\n<script src="cases.js?v={VERSION}"></script>\n<script src="app.js?v={VERSION}"></script>\n</body>\n</html>\n'
+html=html.replace('<!-- BUILD_STAMP -->',f'<span class="build-stamp" title="Release {VERSION}: detective portraits included" aria-label="Game version {VERSION}">v{VERSION} · portraits</span>')
+js='"use strict";\nconst BUILD_VERSION='+repr(VERSION)+';\n'+rd('app_top.js')+'\n'+rd('stage.js')+'\n'+rd('cinema.js')+'\n'+rd('platform.js')+'\n'+rd('app_bottom.js')
 open(os.path.join(here,'public','index.html'),'w',encoding='utf-8').write(html)
 open(os.path.join(here,'public','app.js'),'w',encoding='utf-8').write(js)
 print('index.html',len(html),'app.js',len(js))
