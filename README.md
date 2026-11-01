@@ -118,3 +118,7 @@ This release preserves the deduction and multiplayer rules while making the genu
 - Mobile/battery saver reduces resolution, disables soft shadow work and retains all gameplay interactions.
 
 The concept artwork is a **visual target**, not a rendered background masquerading as interactive 3D; actual quality depends on the device's GPU. Verify visually on physical phones and browsers before a production launch.
+
+## v1.7.0 — Premium Gothic evidence deck
+
+The game now bundles eighteen new original Victorian Gothic SVG evidence illustrations, one for each fixed suspect, method and room ID. These replace the old emoji treatment **within cards and corresponding case references** and appear in the family gallery, private hands, compact/show-card actions, deduction notebook, and case log. The cards include antique-gold bevels, filigree, wax-seal backs and responsive sizing. Nothing about the rules, solutions, AI, card IDs, scoring, or multiplayer behavior was changed. `tools/generate_gothic_card_art.py` rebuilds all 18 offline; `qa/GOTHIC_CARDS_QA.md` describes validation.

@@ -22,7 +22,7 @@ head='''<!doctype html>
 <style>
 '''
 html=head+css+'</style>\n</head>\n<body>\n'+rd('body.html')+f'<script src="rules.js?v={VERSION}"></script>\n<script src="cases.js?v={VERSION}"></script>\n<script src="app.js?v={VERSION}"></script>\n</body>\n</html>\n'
-html=html.replace('<!-- BUILD_STAMP -->',f'<span class="build-stamp" title="Release {VERSION}: cinematic 3D manor materials, lighting, miniatures and camera modes" aria-label="Game version {VERSION}">v{VERSION} · portraits · cinematic 3D manor</span>')
+html=html.replace('<!-- BUILD_STAMP -->',f'<span class="build-stamp" title="Release {VERSION}: eighteen Gothic evidence illustrations, collectible cards, cinematic manor and multiplayer" aria-label="Game version {VERSION}">v{VERSION} · portraits · Gothic cards · cinematic 3D</span>')
 js='"use strict";\nconst BUILD_VERSION='+repr(VERSION)+';\n'+rd('app_top.js')+'\n'+rd('stage.js')+'\n'+rd('cinema.js')+'\n'+rd('platform.js')+'\n'+rd('app_bottom.js')
 open(os.path.join(here,'public','index.html'),'w',encoding='utf-8').write(html)
 open(os.path.join(here,'public','app.js'),'w',encoding='utf-8').write(js)

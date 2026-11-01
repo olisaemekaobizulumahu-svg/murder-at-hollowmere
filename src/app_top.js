@@ -191,7 +191,10 @@ function seatIndex(u,g=S.game){
 }
 const colorOf=(u,g=S.game)=>u==="butler"?"var(--muted)":`var(--p${seatIndex(u,g)%8})`;
 const N=(u,g,lower)=>`<b class="who-n" style="--c:${colorOf(u,g)}">${esc(nm(u,g,lower))}</b>`;
-const ref=id=>{const c=CARD[id];return c?`<span class="ref ${KCLS[c.k]}">${c.icon} ${esc(c.name)}</span>`:"";};
+/* Fixed illustrations are indexed by the trusted 18-card deck; never by user input. */
+const gothicCardArt=id=>`assets/cards/${encodeURIComponent(id)}.svg?v=${encodeURIComponent(BUILD_VERSION)}`;
+const gothicMini=id=>`<img class="gothic-mini" src="${gothicCardArt(id)}" width="28" height="36" alt="" aria-hidden="true" decoding="async">`;
+const ref=id=>{const c=CARD[id];return c?`<span class="ref ${KCLS[c.k]}">${gothicMini(c.id)}<span>${esc(c.name)}</span></span>`:"";};
 const trioRef=cs=>cs.map(ref).join(" · ");
 function online(u){
   const g=S.game;
@@ -215,7 +218,7 @@ function cardHTML(id,o={}){
   let sv=o.i!=null?`--i:${o.i};`:"";
   if(o.fan){const f=o.fan[0]-(o.fan[1]-1)/2;sv+=`--rz:${(f*6).toFixed(1)}deg;--fy:${(f*f*3.2).toFixed(1)}px;`;}
   const sty=sv?` style="${sv}"`:"";
-  const inner=`<span class="pc-k">${KLAB[c.k]}</span><span class="pc-i" aria-hidden="true">${c.icon}</span><span class="pc-n">${esc(c.name)}</span>${o.tag?`<span class="pc-tag">${esc(o.tag)}</span>`:""}`;
+  const inner=`<span class="pc-crown" aria-hidden="true">✦ ❧ ✦</span><span class="pc-k">${KLAB[c.k]}</span><span class="pc-i" aria-hidden="true"><img class="pc-art" src="${gothicCardArt(c.id)}" width="260" height="340" alt="" decoding="async" loading="eager"></span><span class="pc-n">${esc(c.name)}</span><span class="pc-filigree" aria-hidden="true">❦</span>${o.tag?`<span class="pc-tag">${esc(o.tag)}</span>`:""}`;
   if(o.act)return `<button type="button" class="${cls}"${sty} data-act="${o.act}" data-card="${c.id}" aria-label="Show ${esc(c.name)}">${inner}</button>`;
   return `<div class="${cls}"${sty}>${inner}</div>`;
 }
@@ -578,7 +581,7 @@ function builderHTML(mode,kn){
   return `<div class="builder">${groups.map(([k,list,lab])=>`<fieldset class="grp ${KCLS[k]}"><legend>${lab}</legend><div class="chips">${list.map(c=>{
     const st=kn.row[c.id],on=S.pick[k]===c.id,mine=hand&&hand.includes(c.id);
     const cls=`chip ${KCLS[k]}${st==="env"?" hot":""}${["held","faceup","notenv"].includes(st)?" dim":""}`;
-    return `<button type="button" class="${cls}" data-act="pick" data-k="${k}" data-id="${c.id}" aria-pressed="${on}"><span aria-hidden="true">${c.icon}</span>${esc(c.short)}${mine?'<span class="mine">yours</span>':""}</button>`;
+    return `<button type="button" class="${cls}" data-act="pick" data-k="${k}" data-id="${c.id}" aria-pressed="${on}">${gothicMini(c.id)}<span>${esc(c.short)}</span>${mine?'<span class="mine">yours</span>':""}</button>`;
   }).join("")}</div></fieldset>`).join("")}<p class="sentence">${sentence(mode)}</p></div>`;
 }
 function waited(g){const k=g.code+"|"+g.rev;if(S.waitKey!==k){S.waitKey=k;S.waitAt=Date.now();}return Date.now()-S.waitAt;}
@@ -822,7 +825,7 @@ function nbHTML(g,kn){
         const mv=marks[k2]||"";
         return `<td><button class="cell${mv?" man":""}" type="button" data-act="mark" data-k="${esc(k2)}" aria-label="${esc(nick(u,g))}, ${esc(c.name)}: ${mv?{y:"holds it",n:"doesn't hold it",q:"maybe"}[mv]:"no note"}">${mv?GLYPH[mv]:""}</button></td>`;
       }).join("");
-      body+=`<tr class="${rcls}"><th scope="row"><span class="i" aria-hidden="true">${c.icon}</span>${esc(c.name)}</th>${cells}</tr>`;
+      body+=`<tr class="${rcls}"><th scope="row"><span class="i" aria-hidden="true">${gothicMini(c.id)}</span>${esc(c.name)}</th>${cells}</tr>`;
     }
   }
   const envCount=ALL.filter(c=>kn.row[c]==="env").length;

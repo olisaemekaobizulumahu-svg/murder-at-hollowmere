@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="340" viewBox="0 0 260 340" role="img" aria-label="Gothic illustration of clock">
+<defs>
+ <linearGradient id="vellum" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#1c1a22"/><stop offset=".49" stop-color="#30423b"/><stop offset="1" stop-color="#131a22"/></linearGradient>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff1c7"/><stop offset=".25" stop-color="#bd8f51"/><stop offset=".65" stop-color="#f1d19b"/><stop offset="1" stop-color="#927048"/></linearGradient>
+ <radialGradient id="moon" cx="50%" cy="38%" r="65%"><stop stop-color="#91b2a4" stop-opacity=".38"/><stop offset=".66" stop-color="#30423b" stop-opacity=".06"/><stop offset="1" stop-color="#101522" stop-opacity=".7"/></radialGradient>
+ <pattern id="etch" width="21" height="21" patternUnits="userSpaceOnUse"><path d="M0 21L21 0 M-6 6L6 -6 M15 27L27 15" fill="none" stroke="#91b2a4" stroke-opacity=".08" stroke-width="1"/></pattern>
+ <clipPath id="window"><path d="M27 291 V98 Q28 49 130 18 Q232 49 233 98 V291Z"/></clipPath>
+ <filter id="shadow"><feGaussianBlur stdDeviation="5"/></filter>
+</defs>
+<rect width="260" height="340" rx="15" fill="#0d1218"/>
+<path d="M12 329V94 Q12 36 130 8 Q248 36 248 94 V329Z" fill="url(#metal)" stroke="#2a1b1e" stroke-width="3"/>
+<path d="M21 319V95 Q21 46 130 17 Q239 46 239 95 V319Z" fill="#101b17" stroke="#6a4637" stroke-width="3"/>
+<path d="M27 291 V98 Q28 49 130 18 Q232 49 233 98 V291Z" fill="url(#vellum)" stroke="#deba87" stroke-width="2.4"/>
+<g clip-path="url(#window)"><rect x="25" y="19" width="210" height="275" fill="url(#moon)"/><rect x="25" y="19" width="210" height="275" fill="url(#etch)"/>
+<path d="M38 272 L38 112 Q45 74 130 41 Q216 74 223 112 L223 272" fill="none" stroke="#e3c18e" stroke-opacity=".26" stroke-width="2"/>
+<circle cx="130" cy="170" r="95" fill="#e9d2b0" fill-opacity=".10" stroke="#f1d6a0" stroke-opacity=".28" stroke-width="1.2"/>
+<g id="art"><rect x="84" y="77" width="92" height="173" rx="17" fill="#4f332f" stroke="#cca86d" stroke-width="7"/><path d="M84 101 L92 66 L167 66 L176 101Z" fill="#634839" stroke="#d6ae71" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" /><circle cx="130" cy="131" r="39" fill="#e6d1a6" stroke="#9f774c" stroke-width="5"/><circle cx="130" cy="131" r="31" fill="#f4e5c6" stroke="#d6b681" stroke-width="2"/><circle cx="130.0" cy="106.0" r="1.7" fill="#483126"/><circle cx="142.5" cy="109.3" r="1.7" fill="#483126"/><circle cx="151.7" cy="118.5" r="1.7" fill="#483126"/><circle cx="155.0" cy="131.0" r="1.7" fill="#483126"/><circle cx="151.7" cy="143.5" r="1.7" fill="#483126"/><circle cx="142.5" cy="152.7" r="1.7" fill="#483126"/><circle cx="130.0" cy="156.0" r="1.7" fill="#483126"/><circle cx="117.5" cy="152.7" r="1.7" fill="#483126"/><circle cx="108.3" cy="143.5" r="1.7" fill="#483126"/><circle cx="105.0" cy="131.0" r="1.7" fill="#483126"/><circle cx="108.3" cy="118.5" r="1.7" fill="#483126"/><circle cx="117.5" cy="109.3" r="1.7" fill="#483126"/><path d="M130 131 L130 110 M130 131 L144 137" fill="none" stroke="#3b292b" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" /><circle cx="130" cy="131" r="4" fill="#946c4b"/><rect x="100" y="174" width="60" height="57" rx="11" fill="#1b2424" stroke="#cca86d" stroke-width="2"/><path d="M130 180 L130 212" fill="none" stroke="#d8c29a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" /><circle cx="130" cy="212" r="11" fill="#b99c71" stroke="#e1c58d" stroke-width="2"/></g>
+</g>
+<path d="M22 290 H238 V328 H22Z" fill="#111a20" stroke="#d0ad76" stroke-width="2.2"/>
+<path d="M27 303 H233" stroke="#ae8756" stroke-width="1" opacity=".8"/>
+<path d="M32 310 Q68 303 90 310 T158 310 T228 310" fill="none" stroke="#b99a68" opacity=".55" stroke-width="1.5"/>
+<path d="M40 45 Q66 46 81 71 M220 45 Q194 46 179 71" fill="none" stroke="#e5c18e" stroke-width="3"/>
+<path d="M44 40 L70 40 L56 61 Z M216 40 L190 40 L204 61 Z" fill="#b99767"/>
+<path d="M41 277 Q58 256 75 276 M219 277 Q202 256 185 276" fill="none" stroke="#bba16e" stroke-width="3"/>
+<path d="M47 68 Q28 82 47 101" fill="none" stroke="#ccac76" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" /><path d="M213 68 Q232 82 213 101" fill="none" stroke="#ccac76" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" /><circle cx="130" cy="47" r="6" fill="#9b4d57" stroke="#eed2a0" stroke-width="2"/><circle cx="130" cy="47" r="2" fill="#f6dbbb"/><circle cx="57" cy="264" r="1.8" fill="#d0b17c"/><circle cx="86" cy="264" r="1.8" fill="#d0b17c"/><circle cx="115" cy="264" r="1.8" fill="#d0b17c"/><circle cx="144" cy="264" r="1.8" fill="#d0b17c"/><circle cx="173" cy="264" r="1.8" fill="#d0b17c"/><circle cx="202" cy="264" r="1.8" fill="#d0b17c"/>
+<text x="130" y="324" text-anchor="middle" font-family="serif" font-size="11" fill="#e9c895" letter-spacing="2.3">HOLLOWMERE</text>
+</svg>
