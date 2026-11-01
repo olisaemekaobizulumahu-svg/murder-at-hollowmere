@@ -1,6 +1,6 @@
 {
   "name": "murder-at-hollowmere",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Multiplayer Victorian mystery beta: four themed cases, 2\u20138 detectives, animated story sequences, accounts, chat, tournaments and community drafts.",
   "private": true,
   "main": "server.js",

@@ -21,7 +21,7 @@ head='''<!doctype html>
 <style>
 '''
 html=head+css+'</style>\n</head>\n<body>\n'+rd('body.html')+'<script src="rules.js"></script>\n<script src="cases.js"></script>\n<script src="app.js"></script>\n</body>\n</html>\n'
-js=rd('app_top.js')+'\n'+rd('stage.js')+'\n'+rd('platform.js')+'\n'+rd('app_bottom.js')
+js=rd('app_top.js')+'\n'+rd('stage.js')+'\n'+rd('cinema.js')+'\n'+rd('platform.js')+'\n'+rd('app_bottom.js')
 open(os.path.join(here,'public','index.html'),'w',encoding='utf-8').write(html)
 open(os.path.join(here,'public','app.js'),'w',encoding='utf-8').write(js)
 print('index.html',len(html),'app.js',len(js))

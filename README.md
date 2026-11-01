@@ -1,11 +1,11 @@
-# Murder at Hollowmere — v1.3 Expanded Platform Beta
+# Murder at Hollowmere — v1.4 Animated Cinematic Beta
 
 **An original cross-device murder mystery game with a real Node.js server.** Solve the sealed suspect/method/scene combination with 2–8 human or AI detectives. The original Three.js manor board, secret hands, card questioning and accusations remain the core experience.
 
 ## What's playable
 
 - **Four themed mysteries:** Murder at Hollowmere, Death on the Midnight Express, The Masquerade Murder and Secrets of Blackthorn Island. Each has its own premise, 18 themed suspect/method/location names, 54 additional descriptions across the three new cases, and cinematic opening atmosphere. They share the 18-slot deduction engine and existing 3D board geometry; they are *not* four entirely separately modelled environments.
-- **Animated cinematic story panels:** Case-specific establishing shots created with CSS motion graphics, an individual detective introduction, the stopped-clock scene, an evidence-envelope sequence, surprise story interludes after the 3rd/7th/12th question, private card-discovery panels and a multi-scene final reveal. Optional browser speech-synthesis narration. Not video/movie-quality cutscenes or 3D animated actor performances.
+- **Actual moving animated cinematic scenes:** Five automatically advancing, original Canvas-rendered acts show an approach to the estate/train/ball/island, the gathering, stopped-clock blackout, discovery and sealed case evidence. Weather, characters, doors, clock hands, carriage, camera motion, subtitles, pause/skip, replay, optional synthesised ambience and speech narration are included. Additional cinematic discoveries and a final reveal also remain. **This is stylised in-browser motion graphics, not prerecorded film or performance-captured 3D acting.** First-turn server timers include a 42-second cinematic grace period, released early when all detectives finish/skip the film.
 - **Turn timers:** Host chooses unlimited, 30, 60 or 120 seconds. Server enforces decision time, not merely a decorative countdown; card-answer wait is treated separately.
 - **Text conversation:** Room chat, private chat and a separate spectator lounge. Chat reporting and host muting. Private messages and predictions remain server-filtered.
 - **Experimental voice:** Opt-in peer-to-peer microphone calls using WebRTC signaling through the game server. HTTPS/permission required, and STUN-only calls may fail without a TURN relay.
@@ -50,6 +50,9 @@ The code is ready to *upload*, but **this ZIP has not been published to GitHub o
 
 ## QA status
 
+Version 1.4 adds two automated tests (21 total), including animated scene rendering and fair first-turn timer handling. Desktop and simulated mobile Chromium cinematic screenshots were checked; animations were observed across successive frames, with pause and automatic progression tested. See `qa/CINEMATIC_QA.md` for physical-device sign-off.
+
+
 `npm test` covers core rules and new platform HTTP flows. Chromium-based offline/static UI smoke tests and synthetic game-state rendering have been run at 390px, 820px and 1440px widths without reported JavaScript errors or horizontal overflow. These **do not replace real-device Chrome/Safari/WebGL/voice testing**. The execution environment blocks direct local HTTP navigation from browser automation. Follow `qa/DEVICE_QA_CHECKLIST.md` on a public test server.
 
 ## Source map
@@ -57,7 +60,7 @@ The code is ready to *upload*, but **this ZIP has not been published to GitHub o
 - `server.js`: server-side authoritative game logic, SSE, accounts, matchmaking, chat, tournaments and stored case drafts.
 - `public/rules.js`: shared 18-card deduction rules and eight detective personas.
 - `public/cases.js`: four official case scenarios with themed card names and writing.
-- `src/platform.js`, `src/extra.css`: new platform UI, WebRTC audio, accounts, cinematic sequences and responsive styles.
+- `src/platform.js`, `src/cinema.js`, `src/extra.css`: platform UI, cinema player and original animated story rendering, WebRTC audio, accounts and responsive styles.
 - `src/app_top.js`, `src/stage.js`, `src/app_bottom.js`: legacy client and Three.js manor stage.
 - `build.py`: regenerates `public/index.html` and `public/app.js`.
 - `.github/workflows/ci.yml`: build and test pipeline for when the repository is created.

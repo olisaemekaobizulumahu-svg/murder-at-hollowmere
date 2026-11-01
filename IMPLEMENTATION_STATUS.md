@@ -1,3 +1,11 @@
+# Current cinematic status — Version 1.4
+
+**Implemented:** A five-act, autoplaying animated 2D opening with multiple characters/props, a moving carriage, atmospheric storm, will reading, blackout/clock, discovery, evidence sequence, scene controls, narration and optional procedural ambience. An in-game replay button and a server-side opening-film grace period are included.
+
+**Not implemented:** Pre-rendered video, photorealistic films, motion-captured 3D actors, professional voice acting or a bespoke orchestral soundtrack. Browser emulation does not replace physical device QA. The Render deployment is updated only after a successful GitHub publish and hosting redeploy.
+
+---
+
 # Murder at Hollowmere — v1.3 Release Verification Matrix
 
 The goal is to build a serious multiplayer mystery game; this release is an **expanded beta, not a finished cinematic commercial game**. Source-level and test-level evidence is separated from hardware and hosting verification.

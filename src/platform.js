@@ -55,7 +55,7 @@ function platformTableHTML(g){if(!g)return "";
  const spectatorResults=g.status==="over"&&Array.isArray(g.spectatorRankings)&&g.spectatorRankings.length?`<section class="platform-card"><h3>Spectator predictions</h3><ol>${g.spectatorRankings.map(x=>`<li>${esc(x.nick)} — ${x.points} points (${x.correct}/3 correct)</li>`).join("")}</ol></section>`:"";
  const voice=player&&g.status!=="lobby"&&set.voice?`<section class="platform-card"><h3>Optional voice room</h3><p class="muted">Encrypted peer-to-peer browser audio. Requires microphone permission, HTTPS and compatible network routing; a TURN relay is recommended for reliability.</p><div class="actions"><button class="btn sm" type="button" data-act="voicetoggle">${PLATFORM.voiceOn?"Disconnect microphone":"Join voice room"}</button>${PLATFORM.voiceOn?`<button class="btn sm" type="button" data-act="voicemute">${PLATFORM.media?.getAudioTracks()[0]?.enabled?"Mute microphone":"Unmute microphone"}</button>`:""}</div></section>`:"";
  const inviteFriends=player&&g.status==="lobby"&&PLATFORM.profile?.friends?.length?`<section class="platform-card"><h3>Invite friends</h3><div class="actions"><select id="inviteFriendSelect">${PLATFORM.profile.friends.map(h=>`<option value="${esc(h)}">@${esc(h)}</option>`).join("")}</select><button class="btn sm" type="button" data-act="invitefriend">Send invitation</button></div></section>`:"";
- return `<div class="platform-table">${timer}${settings}${inviteFriends}<section class="platform-card story-card"><p class="eyebrow">Now investigating</p><h3>${esc(c.title)}</h3><p>${esc(c.opening||"")}</p></section>${chat}${prediction}${spectatorResults}${voice}${host?`<section class="platform-card"><h3>Tournament association</h3><div class="actions"><input id="tableTournament" placeholder="Tournament code"><button class="btn sm" type="button" data-act="tournamentset">Attach tournament</button></div></section>`:""}</div>`;
+ return `<div class="platform-table">${timer}${settings}${inviteFriends}<section class="platform-card story-card"><p class="eyebrow">Now investigating</p><h3>${esc(c.title)}</h3><p>${esc(c.opening||"")}</p>${g.status!=="lobby"?`<button class="btn sm" type="button" data-act="replaycinematic">▶ Replay story cinematics</button>`:""}</section>${chat}${prediction}${spectatorResults}${voice}${host?`<section class="platform-card"><h3>Tournament association</h3><div class="actions"><input id="tableTournament" placeholder="Tournament code"><button class="btn sm" type="button" data-act="tournamentset">Attach tournament</button></div></section>`:""}</div>`;
 }
 function setPlatformProfile(data){if(!data)return;PLATFORM.profile=data.profile||null;if(data.cases)PLATFORM.cases=data.cases;if(S.view==="home")renderHome();else renderTable();}
 async function platformOp(op,data){const r=await api(op,data);if(!r.ok){toast(r.error||"Couldn't complete that action.");return null;}if(Object.hasOwn(r,"profile"))PLATFORM.profile=r.profile;if(r.cases)PLATFORM.cases=r.cases;render();return r;}
@@ -82,38 +82,100 @@ const PLATFORM_ACT={
  reportchat:async d=>{const r=await platformOp("reportChat",{id:d.mid});if(r)toast("Report submitted to the room moderator.");},
  mutechat:async d=>{const r=await platformOp("mute",{target:d.uid,mute:true});if(r)toast("Participant muted in this room.");},
  voicetoggle:()=>PLATFORM.voiceOn?voiceLeave():voiceJoin(),
- voicemute:()=>{const tr=PLATFORM.media?.getAudioTracks()[0];if(tr)tr.enabled=!tr.enabled;render();}
+ voicemute:()=>{const tr=PLATFORM.media?.getAudioTracks()[0];if(tr)tr.enabled=!tr.enabled;render();},
+ replaycinematic:()=>{if(S.game&&S.game.status!=="lobby")cinematic("opening",S.game);}
 };
+/* Directed motion-graphic cutscenes: a frame-rendered story with auto-play and manual controls. */
 function cinematic(type,g,discovery){
  const c=g.caseData||HMCASES.BY_ID.hollowmere;
+ const theme=c.theme||"manor";
  const detective=g.players&&g.players[S.uid]?DETECTIVE_BY_ID[g.players[S.uid].character]:null;
- let scenes;
- if(type==="opening")scenes=[
-  {eyebrow:"Chapter I · The setting",title:c.title,text:c.opening,art:c.theme||"manor"},
-  {eyebrow:"Chapter II · The gathering",title:detective?detective.name:"Eight detectives. One sealed truth.",text:detective?`${detective.title}. ${detective.bio}`:`As shadows lengthen across ${c.place||"the estate"}, every witness gives a different account. Each detective holds only part of the story.`,art:"portrait",persona:detective?.icon||"🕵️"},
-  {eyebrow:"Chapter III · The hour",title:"11:47",text:c.tagline||"A clock stops. A voice falls silent. The mystery begins.",art:"clock"},
-  {eyebrow:"The investigation",title:"The envelope is sealed",text:"Ask the family about one suspect, one method and one room. Trust your deductions—not the rumours.",art:"envelope"}
- ];
- else if(type==="ending")scenes=[{eyebrow:"The last act",title:g.winner?"The truth is spoken":"The case remains unsolved",text:c.ending||"The night draws to a close.",art:"clock"},{eyebrow:"The revelation",title:g.winner?"Case closed":"Best Detective",text:g.winner?`${g.players[g.winner]?.nick||"A detective"} uncovered the truth. The sealed evidence can finally be read.`:"The murderer escaped conviction. The strongest investigator is honoured by their deductions.",art:"envelope"},
- {eyebrow:"The sealed evidence",title:(g.solution||[]).map(c=>CARD[c]?.name||c).join(" · "),text:"The suspect, method and scene are revealed to every detective. Compare them with your private notebook before the next mystery.",art:"envelope"}];
- else if(type==="event"){
-   const entries={footsteps:{title:"Footsteps in the passage",text:"Three distinct accounts contradict one another. Someone passes the stairs without a candle. The story grows darker, but the evidence cards alone can confirm what happened.",art:"gallery"},letter:{title:"The missing letter",text:"An unsigned note surfaces beneath the clock. Its contents are dramatic, but cannot prove guilt. Keep investigating the sealed evidence.",art:"envelope"},midnight:{title:"A bell without a witness",text:"Midnight strikes. An unseen figure closes a door, and every investigator begins to wonder whether a trusted alibi can survive scrutiny.",art:"clock"}};
-   const e=entries[discovery?.scene]||entries.footsteps;scenes=[{eyebrow:"Interlude · A manor secret",...e}];
- }
- else scenes=[{eyebrow:"Discovery",title:"A new thread emerges",text:"A private card was shown to you. Record it in your notebook before you continue your investigation.",art:"envelope"}];
- PLATFORM.cine={type,scenes,index:0};renderCinematic();
+ let scenes=[];
+ if(type==="opening"){
+  const intros={
+   manor:["The summons","A carriage cuts through the rain. Ambrose has summoned every heir to Hollowmere Manor.","The final will","The family gathers. Before the last page can be read, every smile becomes an accusation.","The stopped clock","The storm swallows the lights. At 11:47, the grandfather clock stops.","The discovery","When the hall falls quiet, Great-Uncle Ambrose is found lifeless. The killer remains unknown."],
+   train:["The midnight express","The Nocturne Express disappears into the mountain snow. Nobody can leave.","A final service","The passengers share one last meal. Their stories no longer agree.","The last whistle","The train jerks through the storm. A signal bell falls silent.","A locked carriage","The patron has been found dead. Every passenger holds a piece of the mystery."],
+   ball:["The invitation","Masks and candlelight fill Ravensgate's grand ballroom.","The final waltz","As the orchestra plays, an unsigned invitation is passed between masked guests.","When the music stops","The chandelier dims. A clock strikes, and the dancers lose sight of one another.","Behind the mirrors","The host is found motionless beyond the mirrored doors. Which mask hides the truth?"],
+   island:["The storm at sea","The lighthouse burns above Blackthorn Island as the last boat loses its way.","Stormbound strangers","The visitors seek shelter and discover the keeper has vanished from his rounds.","The warning bell","The signal lantern falters in the wind. The storm cuts the island off.","The keeper's silence","The keeper is found dead. The sea offers no witness, only unanswered questions."]
+  };
+  const words=intros[theme]||intros.manor;
+  scenes=[
+   {eyebrow:"ACT I · THE ARRIVAL",title:words[0],text:words[1],kind:"arrival",duration:8.5},
+   {eyebrow:"ACT II · THE GATHERING",title:words[2],text:words[3],kind:"gathering",duration:8},
+   {eyebrow:"ACT III · THE BLACKOUT",title:words[4],text:words[5],kind:"clock",duration:7.5},
+   {eyebrow:"ACT IV · THE DISCOVERY",title:words[6],text:words[7],kind:"discovery",duration:8},
+   {eyebrow:"ACT V · THE INVESTIGATION",title:"A sealed truth",text:detective?`${detective.name} arrives to investigate. ${detective.title}. Your task: discover who, how and where.`:"The evidence is sealed. Every detective holds only part of the truth. The investigation begins.",kind:"evidence",duration:8}
+  ];
+ }else if(type==="ending"){
+  scenes=[
+   {eyebrow:"THE FINAL ACT",title:g.winner?"The truth is spoken":"The case remains unsolved",text:c.ending||"The last witness finishes speaking.",kind:"clock",duration:6},
+   {eyebrow:"THE REVELATION",title:g.winner?"Case closed":"Best Detective",text:g.winner?`${g.players[g.winner]?.nick||"A detective"} uncovered the truth. The sealed evidence is now released.`:"The murderer escapes conviction. The best investigator is recognised for their deductions.",kind:"discovery",duration:6},
+   {eyebrow:"THE SEALED EVIDENCE",title:(g.solution||[]).map(id=>CARD[id]?.name||id).join(" · ")||"The final evidence",text:"The suspect, method and scene are revealed to every detective. The case has ended.",kind:"ending",duration:8}
+  ];
+ }else if(type==="event"){
+  const entries={footsteps:{title:"Footsteps in the passage",text:"Someone crosses the hallway without a candle. The noise reveals no culprit; the evidence remains sealed."},letter:{title:"The missing letter",text:"An unsigned note is found. The words are unsettling, but only confirmed card evidence establishes the truth."},midnight:{title:"A bell without a witness",text:"A distant bell rings and a door closes. No alibi is safe from careful questioning."}};
+  const e=entries[discovery?.scene]||entries.footsteps;
+  scenes=[{eyebrow:"INTERLUDE · A MANOR SECRET",...e,kind:"event",duration:7}];
+ }else scenes=[{eyebrow:"PRIVATE DISCOVERY",title:"A new thread emerges",text:"A card has been shown to you alone. Record the evidence in your notebook.",kind:"evidence",duration:6}];
+ if(PLATFORM.cineTicker)clearInterval(PLATFORM.cineTicker);
+ window.HollowmereCinema?.stop();
+ PLATFORM.cine={type,theme,scenes,index:0,elapsed:0,soundOn:false,started:performance.now(),paused:!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches};
+ renderCinematic();
 }
-function renderCinematic(){const el=$("#cinematic");if(!el)return;const o=PLATFORM.cine;if(!o){el.hidden=true;el.innerHTML="";document.body.classList.remove("cinematic-open");return;}
- const sc=o.scenes[o.index],pct=(o.index+1)/o.scenes.length*100;
- el.hidden=false;document.body.classList.add("cinematic-open");el.innerHTML=`<div class="cine-film" role="dialog" aria-modal="true" aria-labelledby="cineTitle"><div class="cine-art ${sc.art}" aria-hidden="true"><div class="cine-moon"></div><div class="cine-roof"></div><div class="cine-tower"></div><div class="cine-windows"></div><div class="cine-clockface"><i></i><b></b></div><div class="cine-mist"></div>${sc.persona?`<div class="cine-portrait">${esc(sc.persona)}</div>`:""}<div class="cine-vignette"></div></div><div class="cine-content"><p class="eyebrow">${esc(sc.eyebrow)}</p><h2 id="cineTitle">${esc(sc.title)}</h2><p>${esc(sc.text)}</p><div class="cine-progress" style="--pc:${pct}%"></div><div class="actions"><button class="btn sm ghost" type="button" data-cine="skip">Skip scene</button>${"speechSynthesis" in window?`<button class="btn sm ghost" type="button" data-cine="narrate">Narrate</button>`:""}<button class="btn primary" type="button" data-cine="next">${o.index===o.scenes.length-1?"Enter the investigation":"Continue"}</button></div></div></div>`;
- const b=el.querySelector('[data-cine="next"]');if(b)b.focus({preventScroll:true});
+function cinematicElapsed(o){return o.elapsed+(o.paused?0:(performance.now()-o.started)/1000);}
+function cinematicEnd(){
+ const finished=PLATFORM.cine;
+ if(finished?.type==="opening"&&S.game?.status==="playing"&&S.game.players?.[S.uid])api("cineReady").catch(()=>{});
+ if(PLATFORM.cineTicker){clearInterval(PLATFORM.cineTicker);PLATFORM.cineTicker=null;}
+ window.HollowmereCinema?.stop();window.HollowmereCinema?.sound(false);
+ if("speechSynthesis" in window)speechSynthesis.cancel();
+ PLATFORM.cine=null;renderCinematic();
 }
-function cineAction(a){if(!PLATFORM.cine)return;
+function renderCinematic(){
+ const el=$("#cinematic");if(!el)return;
+ if(PLATFORM.cineTicker){clearInterval(PLATFORM.cineTicker);PLATFORM.cineTicker=null;}
+ if(!PLATFORM.cine){el.hidden=true;el.innerHTML="";document.body.classList.remove("cinematic-open");return;}
+ const o=PLATFORM.cine,sc=o.scenes[o.index];
+ o.started=performance.now();
+ const nr=o.index+1,total=o.scenes.length;
+ el.hidden=false;document.body.classList.add("cinematic-open");
+ el.innerHTML=`<section class="cine-reel" role="dialog" aria-modal="true" aria-labelledby="cineTitle" aria-describedby="cineSubtitle">
+  <canvas class="cine-canvas" aria-label="Animated story: ${esc(sc.title)}"></canvas>
+  <div class="cine-grade" aria-hidden="true"></div><div class="cine-letterbox top" aria-hidden="true"></div><div class="cine-letterbox bottom" aria-hidden="true"></div>
+  <div class="cine-topline"><span>MURDER AT HOLLOWMERE</span><span>SCENE ${String(nr).padStart(2,"0")} / ${String(total).padStart(2,"0")}</span></div>
+  <div class="cine-copy" aria-live="polite"><p class="cine-act">${esc(sc.eyebrow)}</p><h2 id="cineTitle">${esc(sc.title)}</h2><p id="cineSubtitle">${esc(sc.text)}</p></div>
+  <div class="cine-toolbar"><div class="cine-time"><span class="cine-time-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></div>
+  <div class="cine-controls"><span class="cine-runtime">${nr} of ${total} scenes</span><button type="button" class="btn sm ghost" data-cine="skip">Skip film</button>
+  <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}">${o.paused?"▶ Play":"Ⅱ Pause"}</button>
+  ${window.AudioContext||window.webkitAudioContext?`<button type="button" class="btn sm ghost" data-cine="sound" aria-pressed="${!!o.soundOn}">${o.soundOn?"♪ Sound on":"♪ Sound off"}</button>`:""}
+  ${"speechSynthesis" in window?`<button type="button" class="btn sm ghost" data-cine="narrate">Narrate</button>`:""}
+  <button type="button" class="btn sm primary" data-cine="next">${nr===total?"Enter the investigation":"Next scene →"}</button></div></div>
+ </section>`;
+ const canvas=el.querySelector("canvas");
+ window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o));
+ const fill=el.querySelector(".cine-time-fill");
+ PLATFORM.cineTicker=setInterval(()=>{
+  if(PLATFORM.cine!==o)return;
+  const fraction=Math.min(1,cinematicElapsed(o)/sc.duration);
+  if(fill){fill.style.width=`${fraction*100}%`;fill.setAttribute("aria-valuenow",String(Math.round(fraction*100)));}
+  if(fraction>=1&&!o.paused)cineAction("next");
+ },100);
+}
+function cineAction(a){const o=PLATFORM.cine;if(!o)return;
  if(a==="narrate"){
-  if("speechSynthesis" in window){speechSynthesis.cancel();const sc=PLATFORM.cine.scenes[PLATFORM.cine.index];const u=new SpeechSynthesisUtterance(sc.title+". "+sc.text);u.rate=.86;u.pitch=.86;speechSynthesis.speak(u);}return;
+  if("speechSynthesis" in window){speechSynthesis.cancel();const sc=o.scenes[o.index],u=new SpeechSynthesisUtterance(sc.title+". "+sc.text);u.rate=.86;u.pitch=.83;speechSynthesis.speak(u);}return;
+ }
+ if(a==="sound"){o.soundOn=!o.soundOn;o.soundOn=window.HollowmereCinema?.sound(o.soundOn)===true;const b=$("#cinematic [data-cine=sound]");if(b){b.textContent=o.soundOn?"♪ Sound on":"♪ Sound off";b.setAttribute("aria-pressed",String(o.soundOn));}return;}
+ if(a==="pause"){
+  o.elapsed=cinematicElapsed(o);o.paused=!o.paused;o.started=performance.now();
+  const b=$("#cinematic [data-cine=pause]");if(b){b.textContent=o.paused?"▶ Play":"Ⅱ Pause";b.setAttribute("aria-pressed",String(o.paused));}return;
  }
  if("speechSynthesis" in window)speechSynthesis.cancel();
- if(a==="skip"||++PLATFORM.cine.index>=PLATFORM.cine.scenes.length)PLATFORM.cine=null;renderCinematic();}
+ if(a==="skip")return cinematicEnd();
+ o.index++;
+ if(o.index>=o.scenes.length)return cinematicEnd();
+ o.elapsed=0;o.started=performance.now();renderCinematic();
+}
 async function voiceJoin(){if(!S.game?.settings?.voice||!S.game.players[S.uid])return;
  if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){toast("This browser doesn't support microphone calls.");return;}
  try{PLATFORM.media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});PLATFORM.voiceOn=true;for(const uid of Object.keys(S.game.players).filter(u=>u!==S.uid&&!S.game.players[u].bot&&!S.game.players[u].local))await voicePeer(uid,true);toast("Microphone connected. Other players must also join voice.");render();}

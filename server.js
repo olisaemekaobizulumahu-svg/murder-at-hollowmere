@@ -29,6 +29,8 @@ const MAX_TABLES=Number(ENV.MAX_TABLES)||1500;
 const TRUST_PROXY=ENV.TRUST_PROXY!=="0";
 const RATE=Math.max(1,Number(ENV.RATE_MULT)||1);                  // raise the flood limits (for testing)
 const BOOT=Date.now();
+// The opening film runs automatically for about 40 seconds. Timed turns must not expire while it plays.
+const CINEMATIC_GRACE_MS=42000;
 
 /* ---------- small helpers ---------- */
 const rnd=n=>crypto.randomInt(n);
@@ -183,7 +185,7 @@ function broadcast(T){
 function touch(T){
   if(T.status==="playing"&&["turn","asked"].includes(T.phase)){
     const stamp=T.turn+":"+T.phase;
-    if(T.clockStamp!==stamp){T.clockStamp=stamp;T.turnExpiresAt=T.settings&&T.settings.turnSeconds?now()+1000*T.settings.turnSeconds:null;}
+    if(T.clockStamp!==stamp){T.clockStamp=stamp;const firstIntro=T.phase==="turn"&&T.turn===T.first&&T.introUntil>now();T.turnExpiresAt=T.settings&&T.settings.turnSeconds?(firstIntro?T.introUntil:now())+1000*T.settings.turnSeconds:null;}
   }else{T.clockStamp=null;T.turnExpiresAt=null;}
   if(T.status==="over"&&!T.settled){
     T.settled=true;
@@ -229,7 +231,7 @@ function startGame(T){
   holders.forEach(h=>{handSize[h]=hands[h].length;});
   const first=order[rnd(order.length)];
   Object.assign(T,{status:"playing",order,butler,first,turn:first,phase:"turn",q:null,acc:null,out:{},away:{},left:{},revealed:{},
-    opening:OPENINGS[rnd(OPENINGS.length)],finalRound:false,bestDetective:null,rankings:null,
+    opening:OPENINGS[rnd(OPENINGS.length)],introUntil:now()+CINEMATIC_GRACE_MS,introReady:{},finalRound:false,bestDetective:null,rankings:null,
     faceUp:[],handSize,winner:null,solution:null,startedAt:now(),endedAt:null,log:[],seq:0});
   const progress={};for(const u of order)progress[u]={points:20,questions:0,discoveries:0,accusations:0,asked:[]};
   T.secret={hands,sol,shown:{},autoAway:{},hints:{},progress};
@@ -471,6 +473,7 @@ function botAnswer(T,bot){
 /* ---------- automatic moves: computer players, people who have stepped away, verdicts ---------- */
 function stateKey(T){const a=actor(T);return `${T.status}|${T.phase}|${a}|${T.seq}|${a&&T.away&&T.away[a]?1:0}`;}
 function plan(T,r){
+  if(T.introUntil&&T.phase==="turn"&&T.turn===T.first&&now()<T.introUntil)return {at:T.introUntil,run:()=>{T.introUntil=null;T.clockStamp=null;}};
   const a=actor(T),at=(base,spread)=>r.keyAt+(base+spread*r.jit)*PACE;
   if(T.phase==="judging")return {at:at(2400,0),run:()=>verdict(T)};
   if(!a)return null;
@@ -777,6 +780,15 @@ const OPS={
     if(!(T.hostId===pid||T.players[u].local===pid))refuse("Only the host can remove detectives.",403);
     for(const x of [u,...Object.keys(T.players).filter(x=>T.players[x]&&T.players[x].local===u)])delete T.players[x];
     if(T.hostId===u)T.hostId=pid;
+    touch(T);return {};
+  },
+  cineReady(pid,d){
+    const T=getTable(d.code);
+    if(T.status!=="playing"||!T.players[pid]||T.players[pid].bot)refuse("Only a playing detective can finish the opening film.",403);
+    if(!T.introUntil||now()>=T.introUntil)return {};
+    T.introReady=T.introReady||{};T.introReady[pid]=true;
+    const needed=new Set(humans(T).map(u=>controllerOf(T,u)));
+    if([...needed].every(id=>T.introReady[id])){T.introUntil=null;T.clockStamp=null;}
     touch(T);return {};
   },
   start(pid,d){
