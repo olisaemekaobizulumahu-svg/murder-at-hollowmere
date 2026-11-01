@@ -1,5 +1,5 @@
 "use strict";
-const BUILD_VERSION='1.4.4';
+const BUILD_VERSION='1.4.5';
 /* Murder at Hollowmere: the page.
    The server deals the cards, keeps the envelope and every hand, and runs the computer
    detectives. This page shows what your own seats may see and sends your moves. */
