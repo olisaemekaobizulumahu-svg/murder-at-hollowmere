@@ -247,7 +247,7 @@ function renderCinematic(){
   // The film has a minimum visual beat, but NEVER cuts off a speaking narrator.
   const voiceBusy=o.voiceOn&&(o.voiceState==="speaking"||o.voiceState==="starting");
   const fraction=Math.min(voiceBusy ? .97 : 1,elapsed/duration);
-  if(fill){fill.style.width=String(Math.max(0,Math.min(1,fraction))*100)+"%";fill.setAttribute("aria-valuenow",String(Math.round(Math.max(0,Math.min(1,fraction))*100)));}
+  if(fill){fill.style.width=`${Math.max(0,Math.min(1,fraction))*100}%`;fill.setAttribute("aria-valuenow",String(Math.round(Math.max(0,Math.min(1,fraction))*100)));}
   // Some Web Speech engines fail to emit start/error. Do not freeze the film.
   if(o.voiceOn&&o.voiceState==="starting"&&performance.now()-o.speechStartedAt>4500&&!(speechSynthesis?.speaking)){
    o.voiceState="blocked";cineUpdateVoice(o);
