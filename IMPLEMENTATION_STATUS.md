@@ -64,3 +64,7 @@ Keep `data/` outside Git and never commit `.env`, password hashes or production 
 - On portrait mobile screens, all three revealed cards are displayed together, instead of being cropped to one central card.
 - Retained the existing 3D manor, detective portrait assets, room codes, multiplayer game engine and turn-stability guard.
 - The animation is procedural canvas art, not prerecorded 3D-character footage; narration voice quality and true hands-free playback depend on the player's browser and system policy.
+
+## Version 1.4.5 — Automatic scene-synchronized narration
+
+The cinematic voice starts automatically when each scene appears, and the film waits for the spoken line to finish before advancing. The Narrate button is removed; voice is on by default with an optional Mute control. Ordinary game interactions unlock the browser speech engine before the game starts. Browser autoplay restrictions may still prevent sound until a gesture occurs; captions continue automatically. The existing Render URL is unchanged. Verify /version reports 1.4.5 before testing.

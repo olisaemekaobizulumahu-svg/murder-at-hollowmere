@@ -94,3 +94,7 @@ The game link **does not change**. Version stamps are visible on the home and ta
 The opening and ending are rendered as animated canvas scenes rather than static text slides. The ending now depicts a final gathering, a staged three-card revelation, and a final verdict; portrait-sized screens show all three cards. Browser speech synthesis is requested **automatically at each scene start**, while captions remain available. Browsers that block automatic speech require one tap on **Enable narration** (the page cannot override browser autoplay restrictions). Pause, Skip, and replay controls remain available. See `qa/AUTOMATIC_NARRATION_CINEMATIC_QA.md`.
 
 The existing Render URL stays the same when this commit is deployed to the original Render service. Confirm `https://hollowmere-kfcm.onrender.com/version` returns `1.4.4` before judging the changes; old rooms and cached tabs may still show earlier UI until refreshed.
+
+## Version 1.4.5 — Automatic scene-synchronized narration
+
+The cinematic voice starts automatically when each scene appears, and the film waits for the spoken line to finish before advancing. The Narrate button is removed; voice is on by default with an optional Mute control. Ordinary game interactions unlock the browser speech engine before the game starts. Browser autoplay restrictions may still prevent sound until a gesture occurs; captions continue automatically. The existing Render URL is unchanged. Verify /version reports 1.4.5 before testing.

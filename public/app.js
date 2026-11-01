@@ -2127,7 +2127,7 @@ const Stage=(()=>{
 })(typeof window!=="undefined"?window:globalThis);
 
 /* Platform additions: cases, accounts, moderated community drafts, timers, chat, and peer voice. */
-const PLATFORM={profile:null,cases:HMCASES.CASES,chat:[],prediction:null,voiceOn:false,media:null,peers:new Map(),pendingIce:new Map(),seenCine:new Set(),cine:null,pan:"room",secretCase:null};
+const PLATFORM={profile:null,cases:HMCASES.CASES,chat:[],prediction:null,voiceOn:false,media:null,peers:new Map(),pendingIce:new Map(),seenCine:new Set(),cine:null,pan:"room",secretCase:null,narrationPrimed:false,narrationMuted:false};
 const BASE_CARD_NAMES=Object.fromEntries(ALL.map(id=>[id,{name:CARD[id].name,short:CARD[id].short,note:CARD[id].note}]));
 function applyCase(caseData){
   const c=caseData||HMCASES.BY_ID.hollowmere,overrides=HMCASES.displayCase(c);
@@ -2251,11 +2251,13 @@ function cinematic(type,g,discovery){
  }else scenes=[{eyebrow:"PRIVATE DISCOVERY",title:"A new thread emerges",text:"A card has been shown to you alone. Record the evidence in your notebook.",kind:"evidence",duration:6}];
  if(PLATFORM.cineTicker)clearInterval(PLATFORM.cineTicker);
  window.HollowmereCinema?.stop();
- // Voice is requested automatically. Browser autoplay policies may require the user to
- // tap Enable narration once; captions and the film still play without voice permission.
+ // The film narrates itself. The player's first ordinary game interaction arms
+ // Web Speech (no separate Narrate/Enable Narration button is required).
+ // Browsers that disallow speech without user activation still display captions.
  const narrationSupported=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance);
  PLATFORM.cine={type,theme,scenes,index:0,elapsed:0,soundOn:false,
-  voiceOn:narrationSupported,voiceState:narrationSupported?"starting":"unavailable",
+  voiceOn:narrationSupported&&!PLATFORM.narrationMuted,
+  voiceState:narrationSupported?"starting":"unavailable",
   speech:null,speechStartedAt:0,started:performance.now(),paused:false,
   details:type==="ending"?PLATFORM.finalTruth:null};
  renderCinematic();
@@ -2266,35 +2268,74 @@ function cinematicDuration(o,scene){
  const words=(scene.title+" "+scene.text).split(/\s+/).length;
  return Math.max(scene.duration||9,Math.ceil(words/2.4)+2);
 }
+/* Arm the browser speech engine from an existing player interaction. This
+   happens on the first tap/key press *before* the network round trip to start
+   a game, so an opening streamed to the player can narrate on its own.
+   Web Speech remains subject to each browser's sound autoplay rules. */
+function cinematicArmVoice(){
+ if(!window.speechSynthesis||!window.SpeechSynthesisUtterance||PLATFORM.narrationMuted)return;
+ const current=PLATFORM.cine;
+ if(current){
+  if(current.voiceOn&&current.voiceState==="blocked")cinematicNarrate(current);
+  return;
+ }
+ if(PLATFORM.narrationPrimed)return;
+ try{
+  const warmup=new SpeechSynthesisUtterance(" ");
+  warmup.lang="en-GB";warmup.volume=0;warmup.rate=2;
+  warmup.onend=()=>{PLATFORM.narrationPrimed=true;};
+  speechSynthesis.speak(warmup);
+  // Speech permission is usually unlocked by the gesture that queues it.
+  PLATFORM.narrationPrimed=true;
+ }catch(_){PLATFORM.narrationPrimed=false;}
+}
 function cineSpeechStop(){
  if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}
 }
-function cinematicNarrate(o,retry=false){
+function cinematicNarrate(o){
  if(!o?.voiceOn||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
  cineSpeechStop();
  const i=o.index,sc=o.scenes[i];o.voiceState="starting";o.speechStartedAt=performance.now();
+ o.speechCompletedAt=0;
  try{
   const u=new SpeechSynthesisUtterance(sc.title+". "+sc.text);
   u.lang="en-GB";u.rate=.92;u.pitch=.82;u.volume=1;
   const voices=speechSynthesis.getVoices?.()||[];
   const preferred=voices.find(v=>/^en-GB/i.test(v.lang)&&v.localService)||voices.find(v=>/^en-GB/i.test(v.lang))||voices.find(v=>/^en/i.test(v.lang));
   if(preferred)u.voice=preferred;
-  u.onstart=()=>{if(PLATFORM.cine===o&&o.index===i){o.voiceState="speaking";cineUpdateVoice(o);}};
-  u.onend=()=>{if(PLATFORM.cine===o&&o.index===i){o.voiceState="finished";cineUpdateVoice(o);}};
-  u.onerror=()=>{if(PLATFORM.cine===o&&o.index===i){o.voiceState="blocked";cineUpdateVoice(o);}};
+  u.onstart=()=>{
+   if(PLATFORM.cine!==o||o.index!==i||o.speech!==u)return;
+   o.voiceState="speaking";
+   if(o.paused)try{speechSynthesis.pause();}catch(_){}
+   cineUpdateVoice(o);
+  };
+  u.onend=()=>{
+   if(PLATFORM.cine!==o||o.index!==i||o.speech!==u)return;
+   o.voiceState="finished";o.speechCompletedAt=performance.now();
+   cineUpdateVoice(o);
+  };
+  u.onerror=()=>{
+   if(PLATFORM.cine!==o||o.index!==i||o.speech!==u)return;
+   // A browser may prohibit autoplay. Keep the animation running, and retry
+   // automatically at the next normal interaction, without requiring a Narrate click.
+   o.voiceState="blocked";cineUpdateVoice(o);
+  };
   o.speech=u;
   speechSynthesis.speak(u);
   cineUpdateVoice(o);
- }catch(e){o.voiceState="blocked";cineUpdateVoice(o);}
+ }catch(_){o.voiceState="blocked";cineUpdateVoice(o);}
 }
 function cineUpdateVoice(o){
  if(PLATFORM.cine!==o)return;
- const b=$("#cinematic [data-cine=narrate]");
+ const b=$("#cinematic [data-cine=voice]");
  const status=$("#cinematic .cine-voice-status");
- if(!b)return;
- b.textContent=!o.voiceOn?"Enable narration":o.voiceState==="blocked"?"Enable narration":o.voiceState==="speaking"?"Narration on · mute":"Narration on · mute";
- b.setAttribute("aria-pressed",String(o.voiceOn));
- if(status)status.textContent=!o.voiceOn?"Captions only":o.voiceState==="speaking"?"Narrating automatically":o.voiceState==="blocked"?"Audio blocked by browser — tap Enable narration":o.voiceState==="unavailable"?"Captions only":"Narration starts automatically";
+ if(b){
+  b.textContent=o.voiceOn?"Mute voice":"Unmute voice";
+  b.setAttribute("aria-pressed",String(!o.voiceOn));
+ }
+ if(status){
+  status.textContent=!o.voiceOn?"Narration muted":o.voiceState==="speaking"?"Narrating with the scene":o.voiceState==="finished"?"Narration finished":o.voiceState==="blocked"?"Browser blocked audio · captions are on":o.voiceState==="unavailable"?"Captions only":"Narration starting automatically";
+ }
 }
 function cinematicEnd(){
  const finished=PLATFORM.cine;
@@ -2317,11 +2358,11 @@ function renderCinematic(){
   <div class="cine-topline"><span>MURDER AT HOLLOWMERE</span><span>${String(nr).padStart(2,"0")} / ${String(total).padStart(2,"0")} · ${esc(sc.eyebrow)}</span></div>
   <div class="cine-copy" aria-live="off"><h2 id="cineTitle">${esc(sc.title)}</h2><p id="cineSubtitle">${esc(sc.text)}</p></div>
   <div class="cine-toolbar"><div class="cine-time"><span class="cine-time-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></div>
-  <div class="cine-controls"><span class="cine-runtime">${nr}/${total} · <span class="cine-voice-status">Narration starts automatically</span></span>
+  <div class="cine-controls"><span class="cine-runtime">${nr}/${total} · <span class="cine-voice-status">Narration starting automatically</span></span>
   <button type="button" class="btn sm ghost" data-cine="skip">Skip film</button>
   <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}">${o.paused?"▶ Play":"Ⅱ Pause"}</button>
   ${window.AudioContext||window.webkitAudioContext?`<button type="button" class="btn sm ghost" data-cine="sound" aria-pressed="${!!o.soundOn}">${o.soundOn?"♪ Atmosphere on":"♪ Atmosphere off"}</button>`:""}
-  ${window.speechSynthesis?`<button type="button" class="btn sm ghost" data-cine="narrate" aria-pressed="${o.voiceOn}">${o.voiceOn?"Narration on · mute":"Enable narration"}</button>`:""}
+  ${window.speechSynthesis?`<button type="button" class="btn sm ghost" data-cine="voice" aria-pressed="${!o.voiceOn}">${o.voiceOn?"Mute voice":"Unmute voice"}</button>`:""}
   <button type="button" class="btn sm primary" data-cine="next">${nr===total?"Finish film":"Next scene →"}</button></div></div>
  </section>`;
  const canvas=el.querySelector("canvas");
@@ -2330,21 +2371,26 @@ function renderCinematic(){
  const fill=el.querySelector(".cine-time-fill"),duration=cinematicDuration(o,sc);
  PLATFORM.cineTicker=setInterval(()=>{
   if(PLATFORM.cine!==o)return;
-  const elapsed=cinematicElapsed(o),fraction=Math.min(1,elapsed/duration);
-  if(fill){fill.style.width=`${fraction*100}%`;fill.setAttribute("aria-valuenow",String(Math.round(fraction*100)));}
-  // A blocked speech engine should be discoverable, not silently look enabled.
-  if(o.voiceOn&&o.voiceState==="starting"&&performance.now()-o.speechStartedAt>2200&&!(speechSynthesis?.speaking)){
+  const elapsed=cinematicElapsed(o);
+  // The film has a minimum visual beat, but NEVER cuts off a speaking narrator.
+  const voiceBusy=o.voiceOn&&(o.voiceState==="speaking"||o.voiceState==="starting");
+  const fraction=Math.min(voiceBusy ? .97 : 1,elapsed/duration);
+  if(fill){fill.style.width=String(Math.max(0,Math.min(1,fraction))*100)+"%";fill.setAttribute("aria-valuenow",String(Math.round(Math.max(0,Math.min(1,fraction))*100)));}
+  // Some Web Speech engines fail to emit start/error. Do not freeze the film.
+  if(o.voiceOn&&o.voiceState==="starting"&&performance.now()-o.speechStartedAt>4500&&!(speechSynthesis?.speaking)){
    o.voiceState="blocked";cineUpdateVoice(o);
   }
-  const narratorBusy=o.voiceOn&&o.voiceState==="speaking";
-  if(fraction>=1&&!o.paused&&(!narratorBusy||elapsed>duration+10))cineAction("next");
+  // Hard safety cap protects against a speech engine that stays stuck forever.
+  // It is generous enough for the full spoken passage at normal speech speed.
+  const voiceStuck=elapsed>Math.max(duration+40,65);
+  if(elapsed>=duration&&!o.paused&&(!voiceBusy||voiceStuck))cineAction("next");
  },100);
 }
 function cineAction(a){const o=PLATFORM.cine;if(!o)return;
- if(a==="narrate"){
-  if(!o.voiceOn||o.voiceState==="blocked"){
-   o.voiceOn=true;o.voiceState="starting";cinematicNarrate(o,true);
-  }else{o.voiceOn=false;o.voiceState="muted";cineSpeechStop();cineUpdateVoice(o);}
+ if(a==="voice"){
+  o.voiceOn=!o.voiceOn;PLATFORM.narrationMuted=!o.voiceOn;
+  if(o.voiceOn)cinematicNarrate(o);
+  else{o.voiceState="muted";cineSpeechStop();cineUpdateVoice(o);}
   return;
  }
  if(a==="sound"){
@@ -2389,7 +2435,13 @@ async function onVoice(d){if(!PLATFORM.voiceOn||!S.game||!S.game.players[d.from]
   }
  }catch(e){console.warn("Voice connection could not be established",e);}
 }
-function platformBound(){document.addEventListener("click",e=>{const b=e.target.closest("[data-cine]");if(b)cineAction(b.dataset.cine);});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&PLATFORM.cine)cineAction("skip");});document.addEventListener("submit",e=>{if(e.target.id!=="chatForm")return;e.preventDefault();const input=$("#chatMessage"),text=input?.value;if(!text?.trim())return;api("chat",{channel:PLATFORM.pan==="private"?"private":S.game?.players[S.uid]?"room":"spectators",to:$("#chatRecipient")?.value,text}).then(r=>{if(r.ok&&input)input.value="";else if(!r.ok)toast(r.error);});});document.addEventListener("change",e=>{if(e.target.id==="casePicker")PLATFORM_ACT.casechange();if(e.target.id==="chatChannel"){PLATFORM.pan=e.target.value;renderTable();}});setInterval(()=>{const c=$("#turnClock"),g=S.game;if(c&&g?.turnExpiresAt)c.textContent=g.pausedAt?"Paused":Math.max(0,Math.ceil((g.turnExpiresAt-Date.now())/1000))+"s";},1000);}
+function platformBound(){
+ // Capture user activation on an existing game click, keyboard activation or
+ // touch. No extra speech-enable step is required during the cinematic.
+ document.addEventListener("pointerdown",cinematicArmVoice,{capture:true,passive:true});
+ document.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")cinematicArmVoice();},{capture:true});
+ document.addEventListener("click",cinematicArmVoice,{capture:true});
+ document.addEventListener("click",e=>{const b=e.target.closest("[data-cine]");if(b)cineAction(b.dataset.cine);});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&PLATFORM.cine)cineAction("skip");});document.addEventListener("submit",e=>{if(e.target.id!=="chatForm")return;e.preventDefault();const input=$("#chatMessage"),text=input?.value;if(!text?.trim())return;api("chat",{channel:PLATFORM.pan==="private"?"private":S.game?.players[S.uid]?"room":"spectators",to:$("#chatRecipient")?.value,text}).then(r=>{if(r.ok&&input)input.value="";else if(!r.ok)toast(r.error);});});document.addEventListener("change",e=>{if(e.target.id==="casePicker")PLATFORM_ACT.casechange();if(e.target.id==="chatChannel"){PLATFORM.pan=e.target.value;renderTable();}});setInterval(()=>{const c=$("#turnClock"),g=S.game;if(c&&g?.turnExpiresAt)c.textContent=g.pausedAt?"Paused":Math.max(0,Math.ceil((g.turnExpiresAt-Date.now())/1000))+"s";},1000);}
 
 
 /* ---------- events ---------- */
