@@ -38,9 +38,26 @@ const ACT={
   endcase:()=>{S.sheet="end";render();scrollToPanel("#panel .sheet");},
   endcaseyes:async()=>{S.sheet=null;await move("endcase");},
   addbot:d=>addBot(d.lvl),
+  viewcharacter:()=>scrollToPanel("#chooseDetective"),
+  viewbot:()=>scrollToPanel("#botSetup"),
   localadd:()=>{S.addLocal=true;render();const i=$("#localName");if(i)i.focus();},
   localcancel:()=>{S.addLocal=false;render();},
-  pickcharacter:d=>{if(S.busy)return;api("character",{seat:d.seat,character:d.character}).then(r=>{if(!r.ok)toast(r.error);});},
+  viewroster:()=>scrollToPanel("#detectivesHome"),
+  pickpreferred:d=>{
+    if(!DETECTIVE_BY_ID[d.character])return;
+    const typed=$("#seatNick")?.value||"";
+    S.preferredCharacter=d.character;ls.set("hm.detective",d.character);
+    render();
+    if(typed&&$("#seatNick"))$("#seatNick").value=typed;
+  },
+  pickcharacter:async d=>{
+    if(S.busy||!DETECTIVE_BY_ID[d.character])return;
+    const r=await api("character",{seat:d.seat,character:d.character});
+    if(!r.ok){toast(r.error);return;}
+    if(d.seat===S.uid){S.preferredCharacter=d.character;ls.set("hm.detective",d.character);}
+    if(S.game?.players?.[d.seat]){S.game.players[d.seat].character=d.character;render();}
+    toast(`${DETECTIVE_BY_ID[d.character].name} selected.`);
+  },
   copylink:()=>{if(S.code)copyText(inviteURL(S.code),"Invite link copied. Send it to the family.");},
   sharelink:()=>{if(!S.code||!navigator.share)return;navigator.share({title:"Murder at Hollowmere",text:`Join my murder mystery at Hollowmere. Table ${S.code}.`,url:inviteURL(S.code)}).catch(()=>{});},
   copyme:()=>copyText(myLink(),"Your private link is copied. Open it on your other device."),
@@ -66,7 +83,7 @@ function bind(){
     const k=e.target&&e.target.dataset&&e.target.dataset.set;
     if(k){S[k]=!!e.target.checked;applySettings();if(k==="sound"&&S.sound){unlockAudio();chime("turn");}}
     const seat=e.target&&e.target.dataset&&e.target.dataset.characterSeat;
-    if(seat){api("character",{seat,character:e.target.value}).then(r=>{if(!r.ok)toast(r.error);});}
+    if(seat){ACT.pickcharacter({seat,character:e.target.value});}
   });
   document.addEventListener("submit",e=>{
     const id=e.target&&e.target.id;
@@ -114,6 +131,7 @@ function bind(){
 /* ---------- start-up ---------- */
 function boot(){
   loadIdentity();
+  S.preferredCharacter=DETECTIVE_BY_ID[ls.get("hm.detective")]?ls.get("hm.detective"):"blackwood";
   $("#rulesHome").innerHTML=rulesHTML();
   $("#castHome").innerHTML=castHTML();
   $("#detectivesHome").innerHTML=detectiveRosterHTML();

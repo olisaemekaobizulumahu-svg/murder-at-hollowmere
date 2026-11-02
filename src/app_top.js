@@ -16,7 +16,7 @@ const S={
   tab:null,busy:false,lastPend:null,
   anim:new Set(),pk:null,full:false,
   nudgedAt:{},waitKey:null,waitAt:0,lastNudge:0,
-  sheet:null,sheetConfirm:false,addLocal:false,sound:true,follow:true,saver:false,panelVis:true,settings:false
+  sheet:null,sheetConfirm:false,addLocal:false,preferredCharacter:"blackwood",sound:true,follow:true,saver:false,panelVis:true,settings:false
 };
 const ME=()=>S.as||S.uid;
 
@@ -39,6 +39,23 @@ const cleanNick=v=>[...String(v||"").replace(/\s+/g," ").trim()].slice(0,16).joi
 function detectivePortrait(d,css="",extra=""){
   const character=d||DETECTIVES[0];
   return `<img class="detective-portrait ${css}" src="${character.portrait}?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of ${esc(character.name)}" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
+}
+/* Choosing a person should be possible before creating or joining a room.
+   Once seated, the server owns identity availability and enforces uniqueness. */
+function availableCharacters(g, exceptSeat=null){
+  const taken=new Set(g?seated(g).filter(u=>u!==exceptSeat).map(u=>g.players[u].character):[]);
+  return DETECTIVES.filter(d=>!taken.has(d.id));
+}
+function preferredCharacter(g){
+  const available=availableCharacters(g),wanted=S.preferredCharacter;
+  return available.find(d=>d.id===wanted)||available[0]||null;
+}
+function portraitChoices(g, seat, selection, action="pickcharacter"){
+  const taken=new Set(g?seated(g).filter(u=>u!==seat).map(u=>g.players[u].character):[]);
+  return `<div class="character-options" role="group" aria-label="Choose a detective">${DETECTIVES.map(d=>{
+   const occupied=taken.has(d.id),selected=selection===d.id;
+   return `<button class="character-option ${selected?"is-selected":""} ${occupied?"is-taken":""}" type="button" ${action==="pickcharacter"?'data-act="pickcharacter"':'data-act="pickpreferred"'} ${action==="pickcharacter"?`data-seat="${esc(seat)}"`:""} data-character="${d.id}" aria-label="${occupied?esc(d.name)+" is taken":"Choose "+esc(d.name)}" aria-pressed="${selected?"true":"false"}" ${occupied?"disabled":""}>${detectivePortrait(d,"character-option-face")}<span>${esc(d.name)}</span><small>${occupied?"Taken":selected?"Selected ✓":"Available"}</small></button>`;
+  }).join("")}</div>`;
 }
 function butlerPortrait(css="",extra=""){
   return `<img class="detective-portrait ${css} seat-butler-portrait" src="assets/detectives/fennimore.webp?v=${encodeURIComponent(BUILD_VERSION)}" alt="Portrait of Fennimore the butler" width="240" height="300" loading="eager" decoding="async" ${extra}>`;
@@ -278,7 +295,13 @@ async function nudge(u){
   toast(r.reached?`Nudged ${who}.`:`${who} doesn't have the game open anywhere right now, so the nudge can't reach them.`);
   renderSoon();
 }
-async function addBot(lvl){const r=await api("addbot",{lvl});if(!r.ok)toast(r.error);}
+async function addBot(lvl){
+  const selected=$("#botCharacter")?.value||"";
+  const r=await api("addbot",{lvl,character:selected||null});
+  if(!r.ok){toast(r.error);return;}
+  const who=DETECTIVE_BY_ID[r.character];
+  toast(`${who?.name||"A computer detective"} joined as ${lvl}.`);
+}
 
 /* ---------- sound: a short chime when it's your move ---------- */
 let AC=null;
@@ -305,7 +328,7 @@ function homeMsg(t,err){S.hmsg=t?{t,err:!!err}:null;renderHome();}
 async function createTable(){
   const n=needNick();if(!n)return;
   const b=$("#createBtn");b.disabled=true;
-  const r=await api("create",{nick:n,code:null});
+  const r=await api("create",{nick:n,character:S.preferredCharacter,code:null});
   b.disabled=false;
   if(!r.ok){homeMsg(r.error,true);return;}
   openTable(r.code);
@@ -316,8 +339,13 @@ async function joinTable(raw){
   const n=cleanNick($("#nick").value)||cleanNick(ls.get("hm.nick"));
   if(!n){openTable(code);return;}
   ls.set("hm.nick",n);
-  const r=await api("join",{code,nick:n});
-  if(!r.ok){homeMsg(r.error,true);return;}
+  const r=await api("join",{code,nick:n,character:preferredCharacter(S.game&&S.game.code===code?S.game:null)?.id||S.preferredCharacter});
+  if(!r.ok){
+    if(/detective is already taken|already claimed/i.test(r.error||"")){
+      openTable(code);toast("That detective was just claimed. Choose an available portrait before taking a seat.");return;
+    }
+    homeMsg(r.error,true);return;
+  }
   openTable(code);
 }
 async function takeSeat(){
@@ -326,7 +354,7 @@ async function takeSeat(){
   const n=cleanNick(inp?inp.value:"")||cleanNick(ls.get("hm.nick"));
   if(!n){toast("Type your name first, so the family knows who you are.");if(inp)inp.focus();return;}
   ls.set("hm.nick",n);$("#nick").value=n;
-  const r=await api("join",{code:S.code,nick:n});
+  const r=await api("join",{code:S.code,nick:n,character:preferredCharacter(g)?.id});
   if(!r.ok)toast(r.error);
 }
 async function leaveSeat(){
@@ -467,6 +495,9 @@ function renderHome(){
       return `<li><div><div class="tcode">${esc(t.code)}</div><div class="tmeta">${meta}</div></div><button class="btn sm${t.yourMove||t.status!=="over"?" primary":""}" type="button" data-act="open" data-code="${esc(t.code)}">${btn}</button></li>`;
     }).join("")}</ul></div>`;
   }
+  const chosen=DETECTIVE_BY_ID[S.preferredCharacter]||DETECTIVES[0];
+  setHTML($("#starterChoice"),`<span class="starter-choice-image">${detectivePortrait(chosen,"starter-face")}</span><span><b>Your detective: ${esc(chosen.name)}</b><small>${esc(chosen.title)}</small></span><button class="link starter-change" type="button" data-act="viewroster">Change portrait</button>`);
+  setHTML($("#detectivesHome"),detectiveRosterHTML());
   setHTML($("#platformHome"),platformHomeHTML());
   setHTML($("#lists"),h);
   $("#lists").hidden=!mine.length;
@@ -476,6 +507,8 @@ function renderTable(){
   $("#caseNo").textContent=S.code?`Case № ${S.code}`:"";
   const stage=!g?(S.missing?"closed":"loading"):({lobby:"lobby",over:"over",playing:"playing"}[g.status]||"closed");
   tbl.dataset.stage=stage;
+  const shortcuts=$("#lobbyShortcuts");if(shortcuts)shortcuts.hidden=stage!=="lobby"||!g;
+  const botShortcut=$("#botShortcut");if(botShortcut)botShortcut.hidden=!(g&&stage==="lobby"&&g.hostId===S.uid&&seated(g).length<MAX_SEATS);
   if(!S.tab)S.tab=window.matchMedia&&window.matchMedia("(min-width:960px)").matches?"log":"nb";
   tbl.dataset.tab=(stage==="playing"||stage==="over")?S.tab:"rules";
   $$("#tabbar [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===S.tab)));
@@ -757,10 +790,12 @@ function lobbyHTML(g){
       <div class="invite-row"><input id="inviteLink" readonly value="${esc(link)}"><button class="btn sm" type="button" data-act="copylink">Copy link</button>${navigator.share?`<button class="btn sm" type="button" data-act="sharelink">Share…</button>`:""}</div>
       <p class="muted">Send everyone this link. Or they can open <b>${esc(location.host+location.pathname.replace(/\/$/,""))}</b> and type the code <b>${esc(g.code)}</b>. Nobody needs an account.</p>
     </div>`;
-  const addBots=host&&room?`<div class="addbot">
-      <div class="addbot-t"><b>Add a computer detective</b><span>Rookie detectives use basic clues; Sharp detectives use table-wide deductions; Master detectives select strategic questions using available evidence. AI plays on the server, keeping cards private.</span></div>
-      <div class="actions"><button class="btn sm" type="button" data-act="addbot" data-lvl="rookie">+ Rookie</button><button class="btn sm" type="button" data-act="addbot" data-lvl="sharp">+ Sharp</button><button class="btn sm" type="button" data-act="addbot" data-lvl="master">+ Master</button></div>
-    </div>`:"";
+  const freeCharacters=availableCharacters(g);
+  const addBots=host&&room?`<section class="addbot bot-setup" id="botSetup" aria-label="Computer detectives">
+      <div class="addbot-t"><h3>Invite a computer detective</h3><span>Play solo against AI or fill empty seats. Pick the AI's character and difficulty. Rookie learns the basics, Sharp tracks clues, and Master makes strategic deductions.</span></div>
+      <label for="botCharacter">Computer's detective</label><select id="botCharacter" aria-label="Computer detective identity"><option value="">Auto-pick an available detective</option>${freeCharacters.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select>
+      <div class="actions"><button class="btn sm" type="button" data-act="addbot" data-lvl="rookie">+ Rookie AI</button><button class="btn sm" type="button" data-act="addbot" data-lvl="sharp">+ Sharp AI</button><button class="btn sm primary" type="button" data-act="addbot" data-lvl="master">+ Master AI</button></div>
+    </section>`:"";
   const addLocal=inIt&&room?(S.addLocal?`<form class="addbot" id="localForm">
       <div class="addbot-t"><label for="localName"><b>Who's playing on this device?</b></label><span>When it's their move, you pass them the phone and their cards appear behind a privacy screen.</span></div>
       <div class="actions"><input id="localName" maxlength="16" placeholder="e.g. Grandma Rose" autocomplete="off"><button class="btn sm primary" type="submit">Add</button><button class="btn sm ghost" type="button" data-act="localcancel">Cancel</button></div>
@@ -773,23 +808,24 @@ function lobbyHTML(g){
     act=`<form class="seatform" id="seatForm"><label for="seatNick">Your name at the table</label><div class="actions"><input id="seatNick" maxlength="16" autocomplete="nickname" placeholder="e.g. Grandpa Joe" value="${esc(n)}"><button class="btn primary" type="submit">Take a seat</button></div></form>`;
   }
   else act=`<span class="muted">This table is full. You can watch once the cards are dealt.</span>`;
-  const editableSeats=mySeats(g).filter(u=>g.players[u]&&!g.players[u].bot);
-  const characterSelect=editableSeats.length?`<div class="character-picker"><h3>Choose your detective</h3><p class="muted">All eight are available immediately. Characters are cosmetic; each has the same powers and access to clues.</p>${editableSeats.map(u=>{
+  const editableSeats=[...mySeats(g).filter(u=>g.players[u]&&!g.players[u].bot),...(host?seats.filter(u=>g.players[u].bot):[])];
+  const characterSelect=editableSeats.length?`<section class="character-picker" id="chooseDetective" aria-label="Choose your detective">
+    <h3>Choose your detective</h3><p class="muted">Tap a portrait to claim your character before the host deals. Every online player selects their own; ${host?"the host may also choose for computer detectives.":"other people's choices are reserved."} All eight have equal powers.</p>${editableSeats.map(u=>{
     const p=g.players[u],selected=DETECTIVE_BY_ID[p.character]||DETECTIVES[0];
-    return `<div class="character-row"><strong>${esc(p.nick)}'s detective</strong>
+    return `<div class="character-row"><strong>${esc(p.nick)}'s detective ${p.bot?"· Computer ("+p.bot+")":"· Your seat"}</strong>
       <div class="character-selected">${detectivePortrait(selected,"character-selected-face")}<div><h4>${esc(selected.name)}</h4><b>${esc(selected.title)}</b><p>${esc(selected.bio)}</p></div></div>
-      <label class="character-select-label" for="character-${esc(u)}">Choose by name</label><select id="character-${esc(u)}" data-character-seat="${esc(u)}">${DETECTIVES.map(c=>`<option value="${c.id}" ${selected.id===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select>
-      <div class="character-options" role="group" aria-label="Select a detective for ${esc(p.nick)}">${DETECTIVES.map(c=>`<button class="character-option ${selected.id===c.id?"is-selected":""}" type="button" data-act="pickcharacter" data-seat="${esc(u)}" data-character="${c.id}" aria-label="Choose ${esc(c.name)}" aria-pressed="${selected.id===c.id?"true":"false"}">${detectivePortrait(c,"character-option-face")}<span>${esc(c.name)}</span>${selected.id===c.id?`<small>Selected ✓</small>`:""}</button>`).join("")}</div>
+      ${portraitChoices(g,u,selected.id)}
     </div>`;
-  }).join("")}</div>`:"";
+  }).join("")}</section>`:"";
+  const preseat=!inIt&&room?`<section class="character-picker preseat-picker" id="chooseDetective" aria-label="Choose your detective before joining"><h3>Choose who you'll play</h3><p class="muted">Select your detective, then take a seat. Characters already chosen by other players are unavailable.</p>${portraitChoices(g,null,preferredCharacter(g)?.id,"pickpreferred")}</section>`:"";
   const n=seats.length;
   const hint=n<2?(host?"You need at least two detectives. Wait for family to join, or add a computer detective or a player on this device and start now.":"You need at least two detectives to start."):n===2?"Two detectives: Fennimore the butler joins with a third hand to keep the puzzle interesting.":`${n} detectives. Up to ${MAX_SEATS} can play.`;
   return `<div class="panel act">
     <p class="eyebrow">Gathering the family</p>
     <div class="actions" style="justify-content:space-between"><h2>Table</h2><span class="bigcode">${esc(g.code)}</span></div>
     ${invite}
+    ${preseat}${characterSelect}
     <ol class="guestlist">${list}</ol>
-    ${characterSelect}
     ${addBots}${addLocal}
     <p class="muted">${esc(hint)}</p>
     <div class="actions">${act}</div>
@@ -888,7 +924,7 @@ function rulesHTML(){
   </div>`;
 }
 function detectiveRosterHTML(){
-  return `<div class="roster-grid">${DETECTIVES.map(d=>`<article class="detective-card">${detectivePortrait(d,"detective-card-face")}<h3>${esc(d.name)}</h3><b>${esc(d.title)}</b><p>${esc(d.bio)}</p></article>`).join("")}</div>`;
+  return `<div class="roster-grid">${DETECTIVES.map(d=>`<article class="detective-card ${S.preferredCharacter===d.id?"is-preferred":""}">${detectivePortrait(d,"detective-card-face")}<h3>${esc(d.name)}</h3><b>${esc(d.title)}</b><p>${esc(d.bio)}</p><button type="button" class="btn ${S.preferredCharacter===d.id?"primary":""}" data-act="pickpreferred" data-character="${d.id}" aria-pressed="${S.preferredCharacter===d.id}">${S.preferredCharacter===d.id?"✓ Selected detective":"Play as this detective"}</button></article>`).join("")}</div>`;
 }
 function castHTML(){
   const grp=(k,list,title)=>`<div class="cast-grp ${KCLS[k]}"><h3>${title}</h3><div class="cast-list">${list.map(c=>`<div class="cast-item">${cardHTML(c.id,{size:"sm"})}<p><b>${esc(c.name)}</b>${esc(c.note)}</p></div>`).join("")}</div></div>`;

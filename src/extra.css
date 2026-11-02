@@ -355,3 +355,51 @@ button.pc:focus-visible{outline:3px solid #e4c27d;outline-offset:4px;box-shadow:
  background:linear-gradient(0deg,rgba(3,4,9,.84) 0%,rgba(5,6,11,.50) 17%,rgba(3,5,10,.04) 55%,rgba(3,5,10,.25) 100%);
  box-shadow:inset 0 0 68px 12px rgba(3,5,10,.27);
 }
+
+/* v1.7.2: visible, per-device detective selection and computer opponents. */
+.starter-choice{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid rgba(218,176,110,.55);border-radius:10px;background:rgba(14,16,25,.72);color:#f1dfc2;min-width:0}
+.starter-choice .starter-face{width:48px;height:58px;border-radius:6px;flex-shrink:0}
+.starter-choice>span:last-child{display:grid;gap:3px;min-width:0}
+.starter-choice b{font-size:.96rem;line-height:1.25;overflow-wrap:anywhere}
+.starter-choice small{font-size:.8rem;color:#d3baa0;line-height:1.25}
+.detective-card.is-preferred{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass-soft),var(--shadow)}
+.detective-card>.btn{margin-top:auto;width:100%;white-space:normal}
+.character-picker{scroll-margin-top:16px;border-color:color-mix(in srgb,var(--brass) 48%,var(--line));background:linear-gradient(160deg,rgba(255,251,242,.98),rgba(241,229,204,.96));color:#2c2330;box-shadow:0 12px 38px rgba(0,0,0,.22)}
+.character-picker h3{font-weight:600;font-size:1.5rem;color:#332235}
+.character-picker p.muted{color:#675669;line-height:1.5}
+.character-picker .character-row{border-top:1px solid #bdad91;margin-top:14px;padding-top:15px}
+.character-picker .character-row>strong{color:#392a34;font-size:1rem}
+.character-picker .character-selected{background:#f7ecdc;border-color:#cdb28b;color:#3a282d}
+.character-picker .character-selected h4{color:#3d2832;font-weight:600}
+.character-picker .character-selected p{color:#6f605c}
+.character-picker .character-option{background:#fbf5e9;color:#32252e;border-color:#d8c6a7;box-shadow:0 3px 10px rgba(55,34,18,.07);min-height:132px}
+.character-picker .character-option:not(:disabled):hover{border-color:#ac7d38;box-shadow:0 8px 22px rgba(60,37,18,.16)}
+.character-picker .character-option.is-selected{border-color:#a26a1b;background:#fff2d8;box-shadow:0 0 0 2px #d8b164,0 8px 20px rgba(80,49,16,.17)}
+.character-picker .character-option.is-taken{filter:grayscale(.75);opacity:.5;cursor:not-allowed}
+.character-picker .character-option:focus-visible{outline:3px solid #a06c25;outline-offset:3px}
+.character-picker .character-option small{color:#80592a;font-size:.75rem;letter-spacing:.015em}
+.character-picker .character-option.is-taken small{color:#5e5960}
+.character-picker .character-option-face{max-height:130px}
+.character-picker .character-options{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.bot-setup{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;background:linear-gradient(145deg,rgba(28,27,44,.95),rgba(40,30,45,.92));border:1px solid #bb9357;color:#f4e5cb;border-radius:14px;padding:18px;margin:14px 0}
+.bot-setup h3{font-size:1.5rem;color:#f1d59e;font-weight:600;margin:0}
+.bot-setup .addbot-t span{color:#decdb6;font-size:.95rem;line-height:1.5}
+.bot-setup label{color:#f5e2bd}
+.bot-setup select{background:#f7ecd9;color:#30212b;border:1px solid #caa875;width:100%;max-width:470px}
+.bot-setup .actions{gap:10px}
+.bot-setup .btn{background:#f1e4ce;color:#342535;border-color:#bc9360}
+.bot-setup .btn.primary{background:#ae7d39;color:#fff6e8}
+.guestlist{margin:12px 0}
+@media(max-width:700px){.character-picker .character-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.character-picker .character-option-face{max-height:155px}.starter-choice .starter-face{width:42px;height:52px}.bot-setup{padding:14px}}
+
+.lobby-shortcuts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.lobby-shortcuts[hidden]{display:none}
+.lobby-shortcuts .btn{border-color:rgba(205,161,91,.7);color:#f2d7a7;background:rgba(23,19,28,.85)}
+.lobby-shortcuts .btn:hover{background:rgba(49,37,43,.95)}
+.bot-setup{scroll-margin-top:20px}
+@media(max-width:800px){.lobby-shortcuts{width:100%;order:3;margin:2px 0 0}.lobby-shortcuts .btn{flex:1 1 150px}}
+
+.starter-choice .starter-change{margin-left:auto;color:#f1c98c;font-weight:700;font-size:.9rem;flex-shrink:0}
+.starter-choice .starter-change:hover{color:#ffdfaa}
+#detectivesHome{scroll-margin-top:22px}
+@media(max-width:520px){.starter-choice .starter-change{font-size:.8rem;max-width:65px;white-space:normal;text-align:right}}

@@ -818,6 +818,54 @@ button.pc:focus-visible{outline:3px solid #e4c27d;outline-offset:4px;box-shadow:
  background:linear-gradient(0deg,rgba(3,4,9,.84) 0%,rgba(5,6,11,.50) 17%,rgba(3,5,10,.04) 55%,rgba(3,5,10,.25) 100%);
  box-shadow:inset 0 0 68px 12px rgba(3,5,10,.27);
 }
+
+/* v1.7.2: visible, per-device detective selection and computer opponents. */
+.starter-choice{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid rgba(218,176,110,.55);border-radius:10px;background:rgba(14,16,25,.72);color:#f1dfc2;min-width:0}
+.starter-choice .starter-face{width:48px;height:58px;border-radius:6px;flex-shrink:0}
+.starter-choice>span:last-child{display:grid;gap:3px;min-width:0}
+.starter-choice b{font-size:.96rem;line-height:1.25;overflow-wrap:anywhere}
+.starter-choice small{font-size:.8rem;color:#d3baa0;line-height:1.25}
+.detective-card.is-preferred{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass-soft),var(--shadow)}
+.detective-card>.btn{margin-top:auto;width:100%;white-space:normal}
+.character-picker{scroll-margin-top:16px;border-color:color-mix(in srgb,var(--brass) 48%,var(--line));background:linear-gradient(160deg,rgba(255,251,242,.98),rgba(241,229,204,.96));color:#2c2330;box-shadow:0 12px 38px rgba(0,0,0,.22)}
+.character-picker h3{font-weight:600;font-size:1.5rem;color:#332235}
+.character-picker p.muted{color:#675669;line-height:1.5}
+.character-picker .character-row{border-top:1px solid #bdad91;margin-top:14px;padding-top:15px}
+.character-picker .character-row>strong{color:#392a34;font-size:1rem}
+.character-picker .character-selected{background:#f7ecdc;border-color:#cdb28b;color:#3a282d}
+.character-picker .character-selected h4{color:#3d2832;font-weight:600}
+.character-picker .character-selected p{color:#6f605c}
+.character-picker .character-option{background:#fbf5e9;color:#32252e;border-color:#d8c6a7;box-shadow:0 3px 10px rgba(55,34,18,.07);min-height:132px}
+.character-picker .character-option:not(:disabled):hover{border-color:#ac7d38;box-shadow:0 8px 22px rgba(60,37,18,.16)}
+.character-picker .character-option.is-selected{border-color:#a26a1b;background:#fff2d8;box-shadow:0 0 0 2px #d8b164,0 8px 20px rgba(80,49,16,.17)}
+.character-picker .character-option.is-taken{filter:grayscale(.75);opacity:.5;cursor:not-allowed}
+.character-picker .character-option:focus-visible{outline:3px solid #a06c25;outline-offset:3px}
+.character-picker .character-option small{color:#80592a;font-size:.75rem;letter-spacing:.015em}
+.character-picker .character-option.is-taken small{color:#5e5960}
+.character-picker .character-option-face{max-height:130px}
+.character-picker .character-options{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.bot-setup{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;background:linear-gradient(145deg,rgba(28,27,44,.95),rgba(40,30,45,.92));border:1px solid #bb9357;color:#f4e5cb;border-radius:14px;padding:18px;margin:14px 0}
+.bot-setup h3{font-size:1.5rem;color:#f1d59e;font-weight:600;margin:0}
+.bot-setup .addbot-t span{color:#decdb6;font-size:.95rem;line-height:1.5}
+.bot-setup label{color:#f5e2bd}
+.bot-setup select{background:#f7ecd9;color:#30212b;border:1px solid #caa875;width:100%;max-width:470px}
+.bot-setup .actions{gap:10px}
+.bot-setup .btn{background:#f1e4ce;color:#342535;border-color:#bc9360}
+.bot-setup .btn.primary{background:#ae7d39;color:#fff6e8}
+.guestlist{margin:12px 0}
+@media(max-width:700px){.character-picker .character-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.character-picker .character-option-face{max-height:155px}.starter-choice .starter-face{width:42px;height:52px}.bot-setup{padding:14px}}
+
+.lobby-shortcuts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.lobby-shortcuts[hidden]{display:none}
+.lobby-shortcuts .btn{border-color:rgba(205,161,91,.7);color:#f2d7a7;background:rgba(23,19,28,.85)}
+.lobby-shortcuts .btn:hover{background:rgba(49,37,43,.95)}
+.bot-setup{scroll-margin-top:20px}
+@media(max-width:800px){.lobby-shortcuts{width:100%;order:3;margin:2px 0 0}.lobby-shortcuts .btn{flex:1 1 150px}}
+
+.starter-choice .starter-change{margin-left:auto;color:#f1c98c;font-weight:700;font-size:.9rem;flex-shrink:0}
+.starter-choice .starter-change:hover{color:#ffdfaa}
+#detectivesHome{scroll-margin-top:22px}
+@media(max-width:520px){.starter-choice .starter-change{font-size:.8rem;max-width:65px;white-space:normal;text-align:right}}
 </style>
 </head>
 <body>
@@ -829,10 +877,11 @@ button.pc:focus-visible{outline:3px solid #e4c27d;outline-offset:4px;box-shadow:
         <div class="title3d">
           <p class="eyebrow">A family mystery for 2 to 8 detectives</p>
           <h1>Murder at <em>Hollowmere</em></h1>
-          <span class="build-stamp" title="Release 1.7.1: eighteen Gothic evidence illustrations, collectible cards, cinematic manor and multiplayer" aria-label="Game version 1.7.1">v1.7.1 · portraits · Gothic cards · cinematic 3D</span>
+          <span class="build-stamp" title="Release 1.7.2: eighteen Gothic evidence illustrations, collectible cards, cinematic manor and multiplayer" aria-label="Game version 1.7.2">v1.7.2 · portraits · Gothic cards · cinematic 3D</span>
         </div>
         <section class="hero-join" aria-labelledby="joinH">
           <h2 id="joinH" class="sr-only">Take your seat</h2>
+          <div id="starterChoice" class="starter-choice" aria-live="polite"></div>
           <div class="hj-row">
             <div class="field"><label for="nick">Your name at the table</label><input id="nick" maxlength="16" autocomplete="nickname" placeholder="e.g. Grandpa Joe"></div>
             <button class="btn primary" type="button" data-act="create" id="createBtn">Start a new case</button>
@@ -856,7 +905,7 @@ button.pc:focus-visible{outline:3px solid #e4c27d;outline-offset:4px;box-shadow:
 
     <section class="story-intro" aria-labelledby="storyH"><p class="eyebrow">The Hollowmere case file · 11:47 pm</p><h2 id="storyH">The night the clock stopped</h2><p>Great-Uncle Ambrose invited his family to the manor with a promise: the new will would settle everything. It did the opposite. A door slammed as the storm reached the lake. A servant heard footsteps above the music room. At 11:47, the grandfather clock stopped. When the guests gathered, Ambrose was dead.</p><p>Six relatives had reasons to dread his next announcement. Six strange methods have been whispered about. Six rooms remain under suspicion. No witness knows the full truth—and every new game hides a different answer.</p><p class="story-note">Atmospheric details set the scene; only your cards, questions and confirmed deductions establish the solution.</p></section>
     <div id="platformHome" aria-label="Detective accounts, mysteries and matchmaking"></div>
-    <h2 class="section-h">The eight detectives</h2>
+    <h2 class="section-h" id="detectiveRosterTitle">Choose your detective (8 available)</h2>
     <div id="detectivesHome"></div>
     <h2 class="section-h">How to play</h2>
     <div id="rulesHome"></div>
@@ -868,7 +917,8 @@ button.pc:focus-visible{outline:3px solid #e4c27d;outline-offset:4px;box-shadow:
   <section id="table" class="view" hidden>
     <header class="bar">
       <button class="link" type="button" data-act="home">← Back to the hall</button>
-      <span class="build-stamp" title="Release 1.7.1: eighteen Gothic evidence illustrations, collectible cards, cinematic manor and multiplayer" aria-label="Game version 1.7.1">v1.7.1 · portraits · Gothic cards · cinematic 3D</span>
+      <div class="lobby-shortcuts" id="lobbyShortcuts" hidden><button class="btn sm" type="button" data-act="viewcharacter">Choose detective</button><button class="btn sm" type="button" data-act="viewbot" id="botShortcut">+ Computer detective</button></div>
+      <span class="build-stamp" title="Release 1.7.2: eighteen Gothic evidence illustrations, collectible cards, cinematic manor and multiplayer" aria-label="Game version 1.7.2">v1.7.2 · portraits · Gothic cards · cinematic 3D</span>
       <div class="bar-title"><span class="bar-name">Murder at Hollowmere</span><span class="bar-case" id="caseNo"></span>
         <button class="icon-btn set-open" type="button" data-act="settings" aria-label="Settings" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
       </div>
@@ -903,8 +953,8 @@ button.pc:focus-visible{outline:3px solid #e4c27d;outline-offset:4px;box-shadow:
 <div id="sr" class="sr-only" aria-live="polite"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="cinematic" hidden></div>
-<script src="rules.js?v=1.7.1"></script>
-<script src="cases.js?v=1.7.1"></script>
-<script src="app.js?v=1.7.1"></script>
+<script src="rules.js?v=1.7.2"></script>
+<script src="cases.js?v=1.7.2"></script>
+<script src="app.js?v=1.7.2"></script>
 </body>
 </html>

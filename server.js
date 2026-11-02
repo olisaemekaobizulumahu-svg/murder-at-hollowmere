@@ -596,6 +596,21 @@ function newTable(hostId,players){
   tables.set(code,T);
   return T;
 }
+/* Every occupied detective identity belongs to exactly one seat. This includes
+   online friends, pass-the-phone guests and computer detectives. Server validation
+   prevents two devices from claiming the same character concurrently. */
+function chooseCharacter(T, requested, exceptSeat){
+  const taken=new Set(T?seated(T).filter(u=>u!==exceptSeat).map(u=>T.players[u].character):[]);
+  const id=String(requested||"");
+  if(id){
+    if(!DETECTIVE_BY_ID[id])refuse("That detective is not available. Choose one of the portraits.");
+    if(taken.has(id))refuse("That detective is already taken. Choose a different portrait.");
+    return id;
+  }
+  const choice=DETECTIVES.find(c=>!taken.has(c.id));
+  if(!choice)refuse("No detective identities remain at this table.");
+  return choice.id;
+}
 const OPS={
   register(pid,d){
     const handle=handleOf(d.handle),pass=String(d.password||"");
@@ -639,8 +654,8 @@ const OPS={
     if(mode==="ranked"&&!accountOf(pid))refuse("Sign in to join ranked matches.",403);
     const nick=cleanName(d.nick)||accountOf(pid)?.display||"Detective";
     let T=[...tables.values()].find(t=>t.status==="lobby"&&t.matchmade&&t.mode===mode&&seated(t).length<8&&(!t.players[pid]));
-    if(!T){T=newTable(pid,{[pid]:{nick,character:"blackwood",joinedAt:now()}});T.matchmade=true;T.matchStartedAt=now();T.mode=mode;}
-    else T.players[pid]={nick,character:DETECTIVES[seated(T).length%8].id,joinedAt:now()};
+    if(!T){T=newTable(pid,{[pid]:{nick,character:chooseCharacter(null,d.character),joinedAt:now()}});T.matchmade=true;T.matchStartedAt=now();T.mode=mode;}
+    else T.players[pid]={nick,character:chooseCharacter(T,d.character),joinedAt:now()};
     touch(T);return {code:T.code,seated:true};
   },
   setcase(pid,d){
@@ -744,7 +759,7 @@ const OPS={
   },
   create(pid,d){
     const nick=cleanName(d.nick);if(!nick)refuse("Type your name first, so the family knows who you are.");
-    const T=newTable(pid,{[pid]:{nick,character:"blackwood",joinedAt:now()}});
+    const T=newTable(pid,{[pid]:{nick,character:chooseCharacter(null,d.character),joinedAt:now()}});
     touch(T);return {code:T.code};
   },
   join(pid,d){
@@ -757,7 +772,7 @@ const OPS={
     if(T.status!=="lobby")return {code:T.code,seated:false,watching:true};
     if(seated(T).length>=MAX_SEATS)refuse("That table is full. Eight detectives is the limit.");
     const nick=cleanName(d.nick);if(!nick)refuse("Type your name first, so the family knows who you are.");
-    T.players[pid]={nick,character:DETECTIVES[seated(T).length%DETECTIVES.length].id,joinedAt:now()};
+    T.players[pid]={nick,character:chooseCharacter(T,d.character),joinedAt:now()};
     touch(T);return {code:T.code,seated:true};
   },
   unjoin(pid,d){
@@ -775,10 +790,13 @@ const OPS={
     if(T.status!=="lobby")refuse("The cards are already dealt.");
     if(T.hostId!==pid)refuse("Only the host can add computer detectives.",403);
     if(seated(T).length>=MAX_SEATS)refuse("The table is full. Eight detectives is the limit.");
-    const used=new Set(seated(T).map(u=>T.players[u].nick));
-    const nick=BOT_NAMES.find(n=>!used.has(n))||`Detective ${seated(T).length+1}`;
-    T.players["bot-"+rid()]={nick,character:DETECTIVES[seated(T).length%DETECTIVES.length].id,joinedAt:now(),bot:["rookie","sharp","master"].includes(d.lvl)?d.lvl:"rookie"};
-    touch(T);return {};
+    const level=String(d.lvl||"");
+    if(!["rookie","sharp","master"].includes(level))refuse("Choose a Rookie, Sharp or Master computer detective.");
+    const character=chooseCharacter(T,d.character);
+    const nick=DETECTIVE_BY_ID[character].name;
+    const botId="bot-"+rid();
+    T.players[botId]={nick,character,joinedAt:now(),bot:level};
+    touch(T);return {seat:botId,character};
   },
   addlocal(pid,d){
     const T=getTable(d.code);
@@ -786,15 +804,19 @@ const OPS={
     if(!T.players[pid]||T.players[pid].local||T.players[pid].bot)refuse("Take a seat yourself first.",403);
     if(seated(T).length>=MAX_SEATS)refuse("The table is full. Eight detectives is the limit.");
     const nick=cleanName(d.name);if(!nick)refuse("Type their name first.");
-    T.players["loc-"+rid()]={nick,character:DETECTIVES[seated(T).length%DETECTIVES.length].id,joinedAt:now(),local:pid};
+    T.players["loc-"+rid()]={nick,character:chooseCharacter(T,d.character),joinedAt:now(),local:pid};
     touch(T);return {};
   },
   character(pid,d){
-    const T=getTable(d.code),seat=ownSeat(T,pid,d.seat);
+    const T=getTable(d.code),seat=String(d.seat||pid);
     if(T.status!=="lobby")refuse("Choose your detective before the case starts.");
-    const character=String(d.character||"");
-    if(!DETECTIVE_BY_ID[character])refuse("That detective is not available.");
-    T.players[seat].character=character;touch(T);return {};
+    const controlled=controls(T,seat,pid);
+    const hostBot=T.hostId===pid&&T.players[seat]&&T.players[seat].bot;
+    if(!controlled&&!hostBot)refuse("You can choose only your own detective (or a computer you host).",403);
+    const character=chooseCharacter(T,d.character,seat);
+    T.players[seat].character=character;
+    if(hostBot)T.players[seat].nick=DETECTIVE_BY_ID[character].name;
+    touch(T);return {character,seat};
   },
   hint(pid,d){
     const T=getTable(d.code),seat=ownSeat(T,pid,d.seat);
