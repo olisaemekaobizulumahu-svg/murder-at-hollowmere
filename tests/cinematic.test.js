@@ -11,7 +11,7 @@ function fakeContext(){let fills=0,strokes=0;const gradient=()=>({addColorStop()
  };}
 const device=()=>({pid:'u_'+crypto.randomBytes(12).toString('hex'),key:crypto.randomBytes(32).toString('hex')});
 test('Five animated story sets paint original moving illustrations without remote dependencies',()=>{
- for(const theme of ['manor','train','ball','island'])for(const kind of ['arrival','gathering','clock','discovery','evidence']){
+ for(const theme of ['train','ball','island'])for(const kind of ['arrival','gathering','clock','discovery','evidence']){
   const ctx=fakeContext();for(const moment of [0,2.5,6.5])paint(ctx,theme,kind,moment);
   assert.ok(ctx.fills>100,`${theme}/${kind} should draw an animated scene`);
   assert.ok(ctx.strokes>15,`${theme}/${kind} should draw meaningful scene detail`);

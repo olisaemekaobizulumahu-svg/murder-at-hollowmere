@@ -1,6 +1,6 @@
 {
   "name": "murder-at-hollowmere",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Cinematic multiplayer Victorian deduction game with ornate illustrated Gothic evidence cards, 3D manor and cinematic storytelling.",
   "private": true,
   "main": "server.js",

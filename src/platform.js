@@ -123,6 +123,9 @@ function cinematic(type,g,discovery){
  }else scenes=[{eyebrow:"PRIVATE DISCOVERY",title:"A new thread emerges",text:"A card has been shown to you alone. Record the evidence in your notebook.",kind:"evidence",duration:6}];
  if(PLATFORM.cineTicker)clearInterval(PLATFORM.cineTicker);
  window.HollowmereCinema?.stop();
+ // Request the sequence early, but start each shot only once its artwork is decoded.
+ // This also ensures the old procedural art never flashes between images.
+ window.HollowmereCinema?.prefetch(theme,scenes.map(sc=>sc.kind));
  // The film narrates itself. The player's first ordinary game interaction arms
  // Web Speech (no separate Narrate/Enable Narration button is required).
  // Browsers that disallow speech without user activation still display captions.
@@ -220,29 +223,41 @@ function renderCinematic(){
  const el=$("#cinematic");if(!el)return;
  if(PLATFORM.cineTicker){clearInterval(PLATFORM.cineTicker);PLATFORM.cineTicker=null;}
  if(!PLATFORM.cine){el.hidden=true;el.innerHTML="";document.body.classList.remove("cinematic-open");return;}
- const o=PLATFORM.cine,sc=o.scenes[o.index];o.started=performance.now();
+ const o=PLATFORM.cine,sc=o.scenes[o.index];
+ const token=o.sceneToken=(o.sceneToken||0)+1;
+ o.loading=!!window.HollowmereCinema?.requiresArtwork(o.theme,sc.kind);
+ o.sceneError=false;
+ o.elapsed=0;o.started=performance.now();
  const nr=o.index+1,total=o.scenes.length;
  el.hidden=false;document.body.classList.add("cinematic-open");
  // Film-first layout: the canvas is the scene, and dialogue is a restrained subtitle.
  el.innerHTML=`<section class="cine-reel ${sc.kind==="finalReveal"?"is-reveal":""}" role="dialog" aria-modal="true" aria-labelledby="cineTitle" aria-describedby="cineSubtitle">
   <canvas class="cine-canvas" aria-label="Animated ${esc(sc.kind)} scene"></canvas>
+  <div class="cine-loading" role="status" aria-live="polite"${o.loading?"":" hidden"}>Preparing the next cinematic scene…</div>
   <div class="cine-grade" aria-hidden="true"></div><div class="cine-letterbox top" aria-hidden="true"></div><div class="cine-letterbox bottom" aria-hidden="true"></div>
   <div class="cine-topline"><span>MURDER AT HOLLOWMERE</span><span>${String(nr).padStart(2,"0")} / ${String(total).padStart(2,"0")} · ${esc(sc.eyebrow)}</span></div>
   <div class="cine-copy" aria-live="off"><h2 id="cineTitle">${esc(sc.title)}</h2><p id="cineSubtitle">${esc(sc.text)}</p></div>
   <div class="cine-toolbar"><div class="cine-time"><span class="cine-time-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></div>
   <div class="cine-controls"><span class="cine-runtime">${nr}/${total} · <span class="cine-voice-status">Narration starting automatically</span></span>
   <button type="button" class="btn sm ghost" data-cine="skip">Skip film</button>
-  <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}">${o.paused?"▶ Play":"Ⅱ Pause"}</button>
+  <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}"${o.loading?" disabled":""}>${o.paused?"▶ Play":"Ⅱ Pause"}</button>
   ${window.AudioContext||window.webkitAudioContext?`<button type="button" class="btn sm ghost" data-cine="sound" aria-pressed="${!!o.soundOn}">${o.soundOn?"♪ Atmosphere on":"♪ Atmosphere off"}</button>`:""}
   ${window.speechSynthesis?`<button type="button" class="btn sm ghost" data-cine="voice" aria-pressed="${!o.voiceOn}">${o.voiceOn?"Mute voice":"Unmute voice"}</button>`:""}
-  <button type="button" class="btn sm primary" data-cine="next">${nr===total?"Finish film":"Next scene →"}</button></div></div>
+  <button type="button" class="btn sm primary" data-cine="next"${o.loading?" disabled":""}>${nr===total?"Finish film":"Next scene →"}</button></div></div>
  </section>`;
  const canvas=el.querySelector("canvas");
- window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o),o.details);
- cinematicNarrate(o);
  const fill=el.querySelector(".cine-time-fill"),duration=cinematicDuration(o,sc);
- PLATFORM.cineTicker=setInterval(()=>{
-  if(PLATFORM.cine!==o)return;
+ function beginShot(){
+  if(PLATFORM.cine!==o||o.sceneToken!==token)return;
+  o.loading=false;o.sceneError=false;o.elapsed=0;o.started=performance.now();
+  const loading=el.querySelector(".cine-loading");if(loading)loading.hidden=true;
+  el.querySelector(".cine-reel")?.classList.add("is-ready");
+  for(const button of el.querySelectorAll('[data-cine="next"],[data-cine="pause"]'))button.disabled=false;
+  window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o),o.details);
+  cinematicNarrate(o);
+  // Timer only runs once the correct painted shot is visible to the player.
+  PLATFORM.cineTicker=setInterval(()=>{
+  if(PLATFORM.cine!==o||o.sceneToken!==token||o.loading)return;
   const elapsed=cinematicElapsed(o);
   // The film has a minimum visual beat, but NEVER cuts off a speaking narrator.
   const voiceBusy=o.voiceOn&&(o.voiceState==="speaking"||o.voiceState==="starting");
@@ -256,9 +271,26 @@ function renderCinematic(){
   // It is generous enough for the full spoken passage at normal speech speed.
   const voiceStuck=elapsed>Math.max(duration+40,65);
   if(elapsed>=duration&&!o.paused&&(!voiceBusy||voiceStuck))cineAction("next");
- },100);
+  },100);
+ }
+ function failShot(){
+  if(PLATFORM.cine!==o||o.sceneToken!==token)return;
+  o.loading=true;o.sceneError=true;
+  const loading=el.querySelector(".cine-loading");
+  if(loading){loading.hidden=false;loading.innerHTML=`This scene couldn't load. <button type="button" class="btn sm" data-cine="retry">Retry artwork</button>`;}
+  const status=el.querySelector(".cine-voice-status");if(status)status.textContent="Waiting for scene artwork";
+ }
+ // Unlike the old director, a missing scene does not silently draw a cartoon.
+ if(o.loading)window.HollowmereCinema.preloadScene(o.theme,sc.kind).then(ok=>ok?beginShot():failShot());
+ else beginShot();
 }
 function cineAction(a){const o=PLATFORM.cine;if(!o)return;
+ if(a==="retry"){
+  if(!o.sceneError)return;
+  window.HollowmereCinema?.preloadScene(o.theme,o.scenes[o.index].kind,true);
+  return renderCinematic();
+ }
+ if(o.loading&&a!=="skip")return;
  if(a==="voice"){
   o.voiceOn=!o.voiceOn;PLATFORM.narrationMuted=!o.voiceOn;
   if(o.voiceOn)cinematicNarrate(o);

@@ -122,3 +122,12 @@ The concept artwork is a **visual target**, not a rendered background masqueradi
 ## v1.7.0 — Premium Gothic evidence deck
 
 The game now bundles eighteen new original Victorian Gothic SVG evidence illustrations, one for each fixed suspect, method and room ID. These replace the old emoji treatment **within cards and corresponding case references** and appear in the family gallery, private hands, compact/show-card actions, deduction notebook, and case log. The cards include antique-gold bevels, filigree, wax-seal backs and responsive sizing. Nothing about the rules, solutions, AI, card IDs, scoring, or multiplayer behavior was changed. `tools/generate_gothic_card_art.py` rebuilds all 18 offline; `qa/GOTHIC_CARDS_QA.md` describes validation.
+
+
+## v1.7.1 — Illustrated-only Hollowmere film sequence
+
+The five Hollowmere opening scenes now use the bundled cinematic WebP artwork exclusively:
+**Manor arrival → family gathering → stopped grandfather clock → murder discovery → sealed investigation.**
+Each frame is preloaded/decoded before the sequence begins that scene; the previous procedural clock, corridor, envelope and mansion drawings are **not** fallback visuals for Hollowmere. Narration and scene duration start only after the illustrated frame is ready, then proceed automatically. The finale also uses illustrated artwork before overlaying the verdict and evidence cards. Failed asset requests show a retry control rather than resurrecting the previous art. Mobile camera crops are subject-focused (especially the clock), while other themed mysteries retain their original unique visuals. No gameplay or deduction rules changed.
+
+After updating the existing Render service, verify `/version` reports `1.7.1`, then start a new Hollowmere investigation or use Replay story cinematics. Existing player room codes and site URL remain unchanged. Browser speech autoplay limits still apply.

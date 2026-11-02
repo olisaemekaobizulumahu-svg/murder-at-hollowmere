@@ -7,7 +7,7 @@ test('three unique conclusion scenes animate without exposing secrets until the 
  const details={solution:['The culprit','A poisoned cup','The gallery'],winner:'Alex',success:true};
  for(const kind of ['finalGathering','finalReveal','finalEpilogue']){
   const a=fakeCtx();for(const t of [0,2.2,5.4,8.9,12])paint(a,'manor',kind,t,details);
-  assert.ok(a.fills>50,`${kind} must render original moving illustration`);
+  assert.ok(a.fills>10,`${kind} must render cinematographic overlays without old slides`);
  }
  const f=fakeCtx();paint(f,'manor','finalEpilogue',7,{success:false,solution:[]});assert.ok(f.fills>10);
 });

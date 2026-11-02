@@ -55,6 +55,6 @@ test('Node web server serves every Gothic artwork as SVG and never changes the d
    assert.match(r.headers.get('content-type')||'',/image\/svg\+xml/,id);
    const s=await r.text();assert.match(s,/<svg/);
   }
-  assert.equal((await (await fetch(base+'/version')).json()).version,'1.7.0');
+  assert.equal((await (await fetch(base+'/version')).json()).version,require("../package.json").version);
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });

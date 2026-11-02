@@ -1,5 +1,5 @@
 "use strict";
-const BUILD_VERSION='1.7.0';
+const BUILD_VERSION='1.7.1';
 /* Murder at Hollowmere: the page.
    The server deals the cards, keeps the envelope and every hand, and runs the computer
    detectives. This page shows what your own seats may see and sends your moves. */
@@ -2052,9 +2052,10 @@ const Stage=(()=>{
   return api;
 })();
 
-/* Hollowmere cinematic director — original, deterministic animated 2D storytelling.
-   All illustration is drawn at runtime; no remote videos or dependencies are required.
-   Intentionally keeps the solution secret: atmosphere is NOT evidence. */
+/* Hollowmere cinematic director — image-first illustrated film with moving camera.
+   Hollowmere scenes require locally bundled decoded artwork before narration starts.
+   Procedural sequences remain available for the three other themed mysteries.
+   Atmosphere never discloses the sealed solution or private card evidence. */
 (function(root){"use strict";
  const W=1600,H=900, PI=Math.PI,TAU=PI*2;
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
@@ -2085,9 +2086,46 @@ const Stage=(()=>{
   finalEpilogue:{start:1.02,end:1.08,panX:[10,-18],panY:[8,-10],vignette:.16,dust:.18,warm:1},
   ending:{start:1.02,end:1.08,panX:[10,-18],panY:[8,-10],vignette:.16,dust:.18,warm:1}
  };
+ // Film assets are mandatory for Hollowmere. Preload/decode before starting a shot;
+ // never substitute the retired geometric clock/manor/corridor illustrations.
  const stillCache=new Map();
- function stillPath(theme,kind){return SCENE_STILLS[theme]?.[kind]||"";}
- function ensureStill(src){if(!src||typeof Image==="undefined")return null;let img=stillCache.get(src);if(!img){img=new Image();img.decoding="async";img.src=src;stillCache.set(src,img);}return img;}
+ function stillPath(theme,kind){
+  const base=SCENE_STILLS[theme]?.[kind]||"";
+  const version=typeof BUILD_VERSION==="string"?BUILD_VERSION:"1.7.1";
+  return base?`${base}?v=${encodeURIComponent(version)}`:"";
+ }
+ function requiresArtwork(theme,kind){return !!stillPath(theme,kind);}
+ function ensureStill(src){
+  if(!src||typeof Image==="undefined")return null;
+  let entry=stillCache.get(src);if(entry)return entry;
+  const image=new Image();image.decoding="async";
+  entry={image,state:"loading",promise:null};
+  entry.promise=new Promise(resolve=>{
+   image.onload=()=>{
+    const finish=()=>{entry.state=image.naturalWidth?"ready":"error";resolve(entry.state==="ready");};
+    if(typeof image.decode==="function")image.decode().then(finish,finish);
+    else finish();
+   };
+   image.onerror=()=>{entry.state="error";resolve(false);};
+   image.src=src;
+  });
+  stillCache.set(src,entry);return entry;
+ }
+ function preloadScene(theme,kind,force=false){
+  const src=stillPath(theme,kind);
+  if(!src)return Promise.resolve(true);
+  if(force&&stillCache.get(src)?.state==="error")stillCache.delete(src);
+  const entry=ensureStill(src);
+  return entry?entry.promise:Promise.resolve(false);
+ }
+ function prefetch(theme,kinds){
+  // Fetch following shots concurrently. No audio or scene clocks are started here.
+  return Promise.all((kinds||[]).map(kind=>preloadScene(theme,kind)));
+ }
+ function readyImage(theme,kind){
+  const entry=stillCache.get(stillPath(theme,kind));
+  return entry?.state==="ready"&&entry.image.naturalWidth?entry.image:null;
+ }
  function drawCoverImage(ctx,img,zoom=1,panX=0,panY=0){
   const scale=Math.max(W/(img.naturalWidth||W),H/(img.naturalHeight||H))*zoom;
   const dw=(img.naturalWidth||W)*scale,dh=(img.naturalHeight||H)*scale;
@@ -2096,7 +2134,7 @@ const Stage=(()=>{
  function atmosphereDust(ctx,t,strength=.3){ctx.save();ctx.globalCompositeOperation="screen";for(let i=0;i<90;i++){const x=(rng(i+731)*W+t*(4+strength*6)+i)%W,y=(rng(i+113)*H+t*(7+strength*9)+i*2)%H;const r=.7+rng(i+887)*(1.8+strength*2.4);circle(ctx,x,y,r,`rgba(244,226,189,${.025+strength*.06})`);}ctx.restore();}
  function drawStillScene(ctx,theme,kind,t,details){
   if(typeof ctx?.drawImage!=="function")return false;
-  const src=stillPath(theme,kind);if(!src)return false;const img=ensureStill(src);if(!img?.complete||!img.naturalWidth)return false;
+  const img=readyImage(theme,kind);if(!img)return false;
   const p=STILL_PRESETS[kind]||{start:1.03,end:1.1,panX:[0,0],panY:[0,0],vignette:.24};
   const k=ease(clamp(t/Math.max(6,(kind.startsWith("final")?10:8)),0,1));
   const zoom=lerp(p.start||1.03,p.end||1.1,k),panX=lerp((p.panX||[0,0])[0],(p.panX||[0,0])[1],k),panY=lerp((p.panY||[0,0])[0],(p.panY||[0,0])[1],k);
@@ -2234,7 +2272,7 @@ const Stage=(()=>{
     Each shot uses moving subjects, staged light, camera travel and progressive reveals. */
  function finaleCouncil(ctx,t){
   const usedStill=drawStillScene(ctx,"manor","finalGathering",t);
-  if(!usedStill)parlor(ctx,Math.min(t,5),"manor");
+  if(!usedStill)waitingFrame(ctx);
   ctx.save();
   const dim=.30+.09*Math.sin(t*.9);ctx.fillStyle=`rgba(7,6,14,${dim})`;ctx.fillRect(0,0,W,H);
   // Push in on the sealed evidence across a long oak table.
@@ -2253,14 +2291,8 @@ const Stage=(()=>{
  }
  function finaleRevelation(ctx,t,details){
   const x=800,y=525,usedStill=drawStillScene(ctx,"manor","finalReveal",t,details);
-  if(!usedStill){
-   ctx.fillStyle=gradient(ctx,0,0,0,H,[[0,"#16121c"],[.65,"#261a1c"],[1,"#0c0d15"]]);ctx.fillRect(0,0,W,H);
-   ctx.fillStyle=radial(ctx,x,y,700,[[0,"#c3a16e50"],[1,"#00000000"]]);ctx.fillRect(0,0,W,H);
-   // A circular carved table with a moving overhead pool of lamplight.
-   ctx.save();ctx.translate(x,y+105);ctx.scale(1,.44);circle(ctx,0,0,680,"#4c3125");circle(ctx,0,0,650,"#9c754e");circle(ctx,0,0,620,"#3e281f");ctx.restore();
-  }else{
-   ctx.fillStyle=radial(ctx,800,605,520,[[0,"rgba(255,225,170,.10)"],[1,"rgba(0,0,0,0)"]]);ctx.fillRect(0,0,W,H);
-  }
+  if(!usedStill)waitingFrame(ctx);
+  ctx.fillStyle=radial(ctx,800,605,520,[[0,"rgba(255,225,170,.10)"],[1,"rgba(0,0,0,0)"]]);ctx.fillRect(0,0,W,H);
   const labels=["THE SUSPECT","THE METHOD","THE LOCATION"];
   const names=details?.solution||["SEALED","SEALED","SEALED"];
   // In portrait mode the original film would crop two of the three cards.
@@ -2309,20 +2341,8 @@ const Stage=(()=>{
  function finaleEpilogue(ctx,t,details){
   const success=!!details?.success;
   const usedStill=drawStillScene(ctx,"manor","finalEpilogue",t,details);
-  if(!usedStill){
-   backdrop(ctx,t,"manor");
-   // Dawn brightens after conviction; an unsolved case fades to blue-black.
-   ctx.fillStyle=radial(ctx,1250,170,700,[[0,success?"#eebf7a70":"#7191b228"],[1,"#00000000"]]);ctx.fillRect(0,0,W,H);
-   const z=1+ease(t/13)*.18;ctx.save();ctx.translate(800,500);ctx.scale(z,z);ctx.translate(-800,-500);
-   poly(ctx,[[260,780],[330,290],[485,280],[610,210],[745,300],[1015,300],[1090,170],[1200,295],[1350,310],[1430,780]],"#0f1421");
-   round(ctx,353,328,940,440,0,"#202335","#bc95644d",6);
-   poly(ctx,[[275,332],[440,227],[1100,227],[1350,332]],"#101420");
-   round(ctx,748,565,154,204,74,"#080d18","#ad875a",6);
-   for(let i=0;i<6;i++){let x=443+i*145,y=423;round(ctx,x,y,55,110,25,success?"#d1a26c":"#55667a","#aa8555",4);glow(ctx,x+25,y+45,95,success?"#ffdd9e28":"#abc6ef0c");}
-   ctx.restore();mist(ctx,t);if(!success)rain(ctx,t,.46);
-  }else if(!success){
-   ctx.fillStyle="rgba(10,16,26,.18)";ctx.fillRect(0,0,W,H);
-  }
+  if(!usedStill)waitingFrame(ctx);
+  if(!success){ctx.fillStyle="rgba(10,16,26,.18)";ctx.fillRect(0,0,W,H);}
   const portrait=details?.portraitImage;
   if(success&&portrait?.complete&&portrait.naturalWidth){
    const reveal=ease(clamp((t-2.5)/3,0,1));if(reveal){ctx.save();ctx.globalAlpha=reveal;const portraitMode=details?.portrait;
@@ -2336,22 +2356,28 @@ const Stage=(()=>{
     ctx.strokeStyle="#d0a879";ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,105,0,TAU);ctx.stroke();ctx.textAlign="center";ctx.fillStyle="#ffe8c2";
     ctx.font="bold 28px Georgia";ctx.fillText(success?"CASE CLOSED":"UNSOLVED",0,11);ctx.restore();}
  }
+ function waitingFrame(ctx){
+  // During image decoding a neutral black frame replaces the retired art.
+  ctx.fillStyle=gradient(ctx,0,0,0,H,[[0,"#070b14"],[1,"#030409"]]);ctx.fillRect(0,0,W,H);
+ }
  function paint(ctx,theme,kind,t,details){
   ctx.save();ctx.clearRect(0,0,W,H);
-  const stillReady=/^final/.test(kind)?false:drawStillScene(ctx,theme,kind,t,details);
-  if(kind==="arrival"){
-   if(!stillReady){if(theme==="train")train(ctx,t);else if(theme==="ball")masquerade(ctx,t);else if(theme==="island")lighthouse(ctx,t);else manor(ctx,t);}
-  }else if(kind==="gathering"){if(!stillReady)parlor(ctx,t,theme);}
-  else if(kind==="clock"){if(!stillReady)clock(ctx,t);}
-  else if(kind==="discovery"){if(!stillReady)corridor(ctx,t);}
-  else if(kind==="evidence"){if(!stillReady)evidence(ctx,t);}
-  else if(kind==="finalGathering")finaleCouncil(ctx,t);
-  else if(kind==="finalReveal")finaleRevelation(ctx,t,details);
-  else if(kind==="finalEpilogue")finaleEpilogue(ctx,t,details);
-  else if(kind==="ending"){if(!stillReady)evidence(ctx,t);}
-  else if(kind==="event"){if(!stillReady)corridor(ctx,t);}
-  else if(kind==="portrait"){if(!stillReady)evidence(ctx,t);}
-  else if(!stillReady)manor(ctx,t);
+  if(requiresArtwork(theme,kind)){
+   // This is the only rendering path for the five Hollowmere opening shots
+   // and the illustrated finale. A slow/missing file can NEVER show an old slide.
+   if(kind==="finalGathering")finaleCouncil(ctx,t);
+   else if(kind==="finalReveal")finaleRevelation(ctx,t,details);
+   else if(kind==="finalEpilogue")finaleEpilogue(ctx,t,details);
+   else if(!drawStillScene(ctx,theme,kind,t,details))waitingFrame(ctx);
+  }else if(kind==="arrival"){
+   if(theme==="train")train(ctx,t);else if(theme==="ball")masquerade(ctx,t);else if(theme==="island")lighthouse(ctx,t);else manor(ctx,t);
+  }else if(kind==="gathering")parlor(ctx,t,theme);
+  else if(kind==="clock")clock(ctx,t);
+  else if(kind==="discovery")corridor(ctx,t);
+  else if(kind==="evidence")evidence(ctx,t);
+  else if(kind==="event")corridor(ctx,t);
+  else if(kind==="portrait")evidence(ctx,t);
+  else manor(ctx,t);
   // 2.39:1 film projection, grain, vignette, and rolling film-light artifacts.
   const vg=ctx.createRadialGradient(800,390,160,800,445,1040);vg.addColorStop(0,"#00000000");vg.addColorStop(1,"#000000bb");ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
   for(let i=0;i<90;i++){let x=rng(i*3+17+t*.01)*W,y=rng(i*5+29)*H;ctx.fillStyle="rgba(248,224,187,.04)";ctx.fillRect(x,y,1.3,1.3);}
@@ -2387,10 +2413,25 @@ const Stage=(()=>{
   function resize(){const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight,dpr=Math.min(devicePixelRatio||1,1.7);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
   resize();if(typeof ResizeObserver!=="undefined"){obj.observer=new ResizeObserver(resize);obj.observer.observe(canvas);}else window.addEventListener("resize",resize,{once:true});
   const reduced=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  function frame(){if(obj.cancelled)return;const elapsed=reduced?3.5:getElapsed();const sx=canvas.width/W,sy=canvas.height/H,scale=Math.max(sx,sy);ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#05070b";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.setTransform(scale,0,0,scale,(canvas.width-W*scale)/2,(canvas.height-H*scale)/2);paint(ctx,theme,scene,Math.max(0,elapsed),{...details,portrait:canvas.height>canvas.width*1.1,portraitImage});obj.frame=requestAnimationFrame(frame);}
+  function frame(){
+   if(obj.cancelled)return;
+   const elapsed=reduced?3.5:getElapsed();
+   const sx=canvas.width/W,sy=canvas.height/H,scale=Math.max(sx,sy);
+   ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#05070b";ctx.fillRect(0,0,canvas.width,canvas.height);
+   const portrait=canvas.height>canvas.width*1.1;
+   // The antique clock sits at the right of the widescreen artwork. On phones,
+   // crop around the subject instead of leaving the actual clock offscreen.
+   const sceneFocus={arrival:850,gathering:880,clock:1190,discovery:890,evidence:825,
+    event:845,portrait:860,finalGathering:815,finalReveal:800,finalEpilogue:860,ending:860};
+   const focusX=portrait?sceneFocus[scene]||800:800;
+   const left=portrait?clamp(canvas.width/2-focusX*scale,canvas.width-W*scale,0):(canvas.width-W*scale)/2;
+   ctx.setTransform(scale,0,0,scale,left,(canvas.height-H*scale)/2);
+   paint(ctx,theme,scene,Math.max(0,elapsed),{...details,portrait,portraitImage});
+   obj.frame=requestAnimationFrame(frame);
+  }
   frame();
  }
- const api={mount,stop,paint,sound};if(typeof module==="object"&&module.exports)module.exports=api;else root.HollowmereCinema=api;
+ const api={mount,stop,paint,sound,requiresArtwork,preloadScene,prefetch,readyImage};if(typeof module==="object"&&module.exports)module.exports=api;else root.HollowmereCinema=api;
 })(typeof window!=="undefined"?window:globalThis);
 
 /* Platform additions: cases, accounts, moderated community drafts, timers, chat, and peer voice. */
@@ -2518,6 +2559,9 @@ function cinematic(type,g,discovery){
  }else scenes=[{eyebrow:"PRIVATE DISCOVERY",title:"A new thread emerges",text:"A card has been shown to you alone. Record the evidence in your notebook.",kind:"evidence",duration:6}];
  if(PLATFORM.cineTicker)clearInterval(PLATFORM.cineTicker);
  window.HollowmereCinema?.stop();
+ // Request the sequence early, but start each shot only once its artwork is decoded.
+ // This also ensures the old procedural art never flashes between images.
+ window.HollowmereCinema?.prefetch(theme,scenes.map(sc=>sc.kind));
  // The film narrates itself. The player's first ordinary game interaction arms
  // Web Speech (no separate Narrate/Enable Narration button is required).
  // Browsers that disallow speech without user activation still display captions.
@@ -2615,29 +2659,41 @@ function renderCinematic(){
  const el=$("#cinematic");if(!el)return;
  if(PLATFORM.cineTicker){clearInterval(PLATFORM.cineTicker);PLATFORM.cineTicker=null;}
  if(!PLATFORM.cine){el.hidden=true;el.innerHTML="";document.body.classList.remove("cinematic-open");return;}
- const o=PLATFORM.cine,sc=o.scenes[o.index];o.started=performance.now();
+ const o=PLATFORM.cine,sc=o.scenes[o.index];
+ const token=o.sceneToken=(o.sceneToken||0)+1;
+ o.loading=!!window.HollowmereCinema?.requiresArtwork(o.theme,sc.kind);
+ o.sceneError=false;
+ o.elapsed=0;o.started=performance.now();
  const nr=o.index+1,total=o.scenes.length;
  el.hidden=false;document.body.classList.add("cinematic-open");
  // Film-first layout: the canvas is the scene, and dialogue is a restrained subtitle.
  el.innerHTML=`<section class="cine-reel ${sc.kind==="finalReveal"?"is-reveal":""}" role="dialog" aria-modal="true" aria-labelledby="cineTitle" aria-describedby="cineSubtitle">
   <canvas class="cine-canvas" aria-label="Animated ${esc(sc.kind)} scene"></canvas>
+  <div class="cine-loading" role="status" aria-live="polite"${o.loading?"":" hidden"}>Preparing the next cinematic scene…</div>
   <div class="cine-grade" aria-hidden="true"></div><div class="cine-letterbox top" aria-hidden="true"></div><div class="cine-letterbox bottom" aria-hidden="true"></div>
   <div class="cine-topline"><span>MURDER AT HOLLOWMERE</span><span>${String(nr).padStart(2,"0")} / ${String(total).padStart(2,"0")} · ${esc(sc.eyebrow)}</span></div>
   <div class="cine-copy" aria-live="off"><h2 id="cineTitle">${esc(sc.title)}</h2><p id="cineSubtitle">${esc(sc.text)}</p></div>
   <div class="cine-toolbar"><div class="cine-time"><span class="cine-time-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></span></div>
   <div class="cine-controls"><span class="cine-runtime">${nr}/${total} · <span class="cine-voice-status">Narration starting automatically</span></span>
   <button type="button" class="btn sm ghost" data-cine="skip">Skip film</button>
-  <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}">${o.paused?"▶ Play":"Ⅱ Pause"}</button>
+  <button type="button" class="btn sm ghost" data-cine="pause" aria-pressed="${o.paused}"${o.loading?" disabled":""}>${o.paused?"▶ Play":"Ⅱ Pause"}</button>
   ${window.AudioContext||window.webkitAudioContext?`<button type="button" class="btn sm ghost" data-cine="sound" aria-pressed="${!!o.soundOn}">${o.soundOn?"♪ Atmosphere on":"♪ Atmosphere off"}</button>`:""}
   ${window.speechSynthesis?`<button type="button" class="btn sm ghost" data-cine="voice" aria-pressed="${!o.voiceOn}">${o.voiceOn?"Mute voice":"Unmute voice"}</button>`:""}
-  <button type="button" class="btn sm primary" data-cine="next">${nr===total?"Finish film":"Next scene →"}</button></div></div>
+  <button type="button" class="btn sm primary" data-cine="next"${o.loading?" disabled":""}>${nr===total?"Finish film":"Next scene →"}</button></div></div>
  </section>`;
  const canvas=el.querySelector("canvas");
- window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o),o.details);
- cinematicNarrate(o);
  const fill=el.querySelector(".cine-time-fill"),duration=cinematicDuration(o,sc);
- PLATFORM.cineTicker=setInterval(()=>{
-  if(PLATFORM.cine!==o)return;
+ function beginShot(){
+  if(PLATFORM.cine!==o||o.sceneToken!==token)return;
+  o.loading=false;o.sceneError=false;o.elapsed=0;o.started=performance.now();
+  const loading=el.querySelector(".cine-loading");if(loading)loading.hidden=true;
+  el.querySelector(".cine-reel")?.classList.add("is-ready");
+  for(const button of el.querySelectorAll('[data-cine="next"],[data-cine="pause"]'))button.disabled=false;
+  window.HollowmereCinema?.mount(canvas,sc.kind,o.theme,()=>cinematicElapsed(o),o.details);
+  cinematicNarrate(o);
+  // Timer only runs once the correct painted shot is visible to the player.
+  PLATFORM.cineTicker=setInterval(()=>{
+  if(PLATFORM.cine!==o||o.sceneToken!==token||o.loading)return;
   const elapsed=cinematicElapsed(o);
   // The film has a minimum visual beat, but NEVER cuts off a speaking narrator.
   const voiceBusy=o.voiceOn&&(o.voiceState==="speaking"||o.voiceState==="starting");
@@ -2651,9 +2707,26 @@ function renderCinematic(){
   // It is generous enough for the full spoken passage at normal speech speed.
   const voiceStuck=elapsed>Math.max(duration+40,65);
   if(elapsed>=duration&&!o.paused&&(!voiceBusy||voiceStuck))cineAction("next");
- },100);
+  },100);
+ }
+ function failShot(){
+  if(PLATFORM.cine!==o||o.sceneToken!==token)return;
+  o.loading=true;o.sceneError=true;
+  const loading=el.querySelector(".cine-loading");
+  if(loading){loading.hidden=false;loading.innerHTML=`This scene couldn't load. <button type="button" class="btn sm" data-cine="retry">Retry artwork</button>`;}
+  const status=el.querySelector(".cine-voice-status");if(status)status.textContent="Waiting for scene artwork";
+ }
+ // Unlike the old director, a missing scene does not silently draw a cartoon.
+ if(o.loading)window.HollowmereCinema.preloadScene(o.theme,sc.kind).then(ok=>ok?beginShot():failShot());
+ else beginShot();
 }
 function cineAction(a){const o=PLATFORM.cine;if(!o)return;
+ if(a==="retry"){
+  if(!o.sceneError)return;
+  window.HollowmereCinema?.preloadScene(o.theme,o.scenes[o.index].kind,true);
+  return renderCinematic();
+ }
+ if(o.loading&&a!=="skip")return;
  if(a==="voice"){
   o.voiceOn=!o.voiceOn;PLATFORM.narrationMuted=!o.voiceOn;
   if(o.voiceOn)cinematicNarrate(o);
